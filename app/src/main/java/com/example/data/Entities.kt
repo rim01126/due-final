@@ -26,6 +26,8 @@ data class Customer(
     val pendingAmount: Double,
     val notes: String = "",
     val status: String, // "Active", "Paid", "Pending", "Overdue", "Critical"
+    val invoiceNumber: String = "",
+    val modelDetail: String = "",
     val createdAt: Long = System.currentTimeMillis()
 )
 

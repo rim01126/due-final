@@ -30,7 +30,9 @@ data class CustomerDto(
     @Json(name = "total_bill_amount") val totalBillAmount: Double,
     @Json(name = "pending_amount") val pendingAmount: Double,
     @Json(name = "notes") val notes: String? = null,
-    @Json(name = "status") val status: String
+    @Json(name = "status") val status: String,
+    @Json(name = "invoice_number") val invoiceNumber: String? = null,
+    @Json(name = "model_detail") val modelDetail: String? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -315,7 +317,9 @@ fun Customer.toDto() = CustomerDto(
     totalBillAmount = totalBillAmount,
     pendingAmount = pendingAmount,
     notes = notes.takeIf { it.isNotEmpty() },
-    status = status
+    status = status,
+    invoiceNumber = invoiceNumber.takeIf { it.isNotEmpty() },
+    modelDetail = modelDetail.takeIf { it.isNotEmpty() }
 )
 
 fun CustomerDto.toEntity() = Customer(
@@ -330,7 +334,9 @@ fun CustomerDto.toEntity() = Customer(
     totalBillAmount = totalBillAmount,
     pendingAmount = pendingAmount,
     notes = notes ?: "",
-    status = status
+    status = status,
+    invoiceNumber = invoiceNumber ?: "",
+    modelDetail = modelDetail ?: ""
 )
 
 fun Due.toDto() = DueDto(

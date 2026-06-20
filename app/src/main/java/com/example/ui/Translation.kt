@@ -114,4 +114,6 @@ object AppStrings {
     fun reminderLogHeader(lang: Lang) = if (lang == Lang.EN) "Reminder Dispatch Log" else "રિમાઇન્ડર મોકલવાના લોગ"
     fun englishTemplateTitle(lang: Lang) = if (lang == Lang.EN) "English Notification Content" else "અંગ્રેજી રિમાઇન્ડર ટેમ્પલેટ"
     fun gujaratiTemplateTitle(lang: Lang) = if (lang == Lang.EN) "Gujarati Notification Content" else "ગુજરાતી રિમાઇન્ડર ટેમ્પલેટ"
+    fun invoiceNumber(lang: Lang) = if (lang == Lang.EN) "Invoice Number (Optional)" else "ભરતિયું / ઇન્વોઇસ નંબર (વૈકલ્પિક)"
+    fun modelDetail(lang: Lang) = if (lang == Lang.EN) "Model Detail (Color, RAM, Storage)" else "મોડલ વિગત (કલર, રેમ, સ્ટોરેજ)"
 }

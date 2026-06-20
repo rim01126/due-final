@@ -103,6 +103,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         "નમસ્તે {customer_name},\n\nPhone World તરફથી યાદ અપાવવામાં આવે છે કે તમારી બાકી રકમ ₹{due_amount} છે.\n\nકૃપા કરીને {due_date} સુધી ચુકવણી કરો.\n\nઆભાર."
     )
 
+    val whatsAppReminderDialogData = MutableStateFlow<WhatsAppReminderData?>(null)
+
     // Supabase Sync States
     val syncStatusState = MutableStateFlow<String>("Idle")
     val syncErrorState = MutableStateFlow<String?>(null)
@@ -219,7 +221,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         pending: Double,
         notes: String,
         referredByType: String,
-        referrerName: String
+        referrerName: String,
+        invoiceNumber: String = "",
+        modelDetail: String = ""
     ) {
         viewModelScope.launch {
             val status = if (pending <= 0.0) "Paid" else "Pending"
@@ -234,7 +238,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 totalBillAmount = price,
                 pendingAmount = pending,
                 notes = notes,
-                status = status
+                status = status,
+                invoiceNumber = invoiceNumber,
+                modelDetail = modelDetail
             )
             val customerId = repository.addCustomer(customer, referredByType, referrerName, staffNameState.value)
             
@@ -251,7 +257,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     dueDate = dateStr,
                     reminderDate = dateStr,
                     dueStatus = "Pending",
-                    notes = "Direct auto installments"
+                    notes = "Direct auto installments",
+                    invoiceNumber = invoiceNumber
                 )
                 repository.addDue(due, staffNameState.value)
             }

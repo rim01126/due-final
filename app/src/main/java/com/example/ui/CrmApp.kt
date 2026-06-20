@@ -302,6 +302,16 @@ fun CrmApp(viewModel: AppViewModel) {
         }
     }
 
+    val whatsAppReminderData by viewModel.whatsAppReminderDialogData.collectAsState()
+    whatsAppReminderData?.let { data ->
+        WhatsAppReminderDialog(
+            data = data,
+            viewModel = viewModel,
+            lang = lang,
+            onDismiss = { viewModel.whatsAppReminderDialogData.value = null }
+        )
+    }
+
     if (showSupabaseInfoDialog) {
         Dialog(onDismissRequest = { showSupabaseInfoDialog = false }) {
             Card(
@@ -1258,7 +1268,12 @@ fun DashboardScreen(viewModel: AppViewModel, lang: Lang) {
                                 IconButton(
                                     onClick = {
                                         val amt = cust?.pendingAmount ?: 0.0
-                                        viewModel.sendWhatsAppReminder(f.customerId, f.customerName, amt, todayStr, lang == Lang.GU)
+                                        viewModel.whatsAppReminderDialogData.value = WhatsAppReminderData(
+                                            customerName = f.customerName,
+                                            mobileNumber = cust?.mobileNumber ?: "",
+                                            amount = amt,
+                                            dueDate = todayStr
+                                        )
                                     },
                                     modifier = Modifier
                                         .size(32.dp)
@@ -1406,8 +1421,8 @@ fun DashboardScreen(viewModel: AppViewModel, lang: Lang) {
         AddCustomerDialog(
             lang = lang,
             onDismiss = { showAddCustomerDialogFromDash = false },
-            onSave = { name, mob, altM, addr, city, prod, price, pending, notes, refType, refName ->
-                viewModel.addCustomer(name, mob, altM, addr, city, prod, price, pending, notes, refType, refName)
+            onSave = { name, mob, altM, addr, city, prod, price, pending, notes, refType, refName, invoiceNo, modelDet ->
+                viewModel.addCustomer(name, mob, altM, addr, city, prod, price, pending, notes, refType, refName, invoiceNo, modelDet)
                 showAddCustomerDialogFromDash = false
                 android.widget.Toast.makeText(context, "Customer created successfully!", android.widget.Toast.LENGTH_SHORT).show()
             }
@@ -1742,8 +1757,8 @@ fun CustomersScreen(viewModel: AppViewModel, lang: Lang) {
         AddCustomerDialog(
             lang = lang,
             onDismiss = { showAddDialog = false },
-            onSave = { name, mob, altM, addr, city, prod, price, pending, notes, refType, refName ->
-                viewModel.addCustomer(name, mob, altM, addr, city, prod, price, pending, notes, refType, refName)
+            onSave = { name, mob, altM, addr, city, prod, price, pending, notes, refType, refName, invoiceNo, modelDet ->
+                viewModel.addCustomer(name, mob, altM, addr, city, prod, price, pending, notes, refType, refName, invoiceNo, modelDet)
                 showAddDialog = false
             }
         )
@@ -1854,7 +1869,7 @@ fun Icon(imageVector: ImageVector, contentDescription: String?, size: androidx.c
 fun AddCustomerDialog(
     lang: Lang,
     onDismiss: () -> Unit,
-    onSave: (name: String, mob: String, altM: String, addr: String, city: String, prod: String, price: Double, pending: Double, notes: String, refType: String, refName: String) -> Unit
+    onSave: (name: String, mob: String, altM: String, addr: String, city: String, prod: String, price: Double, pending: Double, notes: String, refType: String, refName: String, invoiceNo: String, modelDet: String) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var mobile by remember { mutableStateOf("") }
@@ -1862,6 +1877,8 @@ fun AddCustomerDialog(
     var address by remember { mutableStateOf("") }
     var city by remember { mutableStateOf("") }
     var product by remember { mutableStateOf("") }
+    var modelDetail by remember { mutableStateOf("") }
+    var invoiceNumber by remember { mutableStateOf("") }
     var billText by remember { mutableStateOf("") }
     var pendingText by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
@@ -1932,6 +1949,13 @@ fun AddCustomerDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                OutlinedTextField(
+                    value = modelDetail,
+                    onValueChange = { modelDetail = it },
+                    label = { Text(AppStrings.modelDetail(lang)) },
+                    modifier = Modifier.fillMaxWidth().testTag("cust_model_detail_field")
+                )
+
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = billText,
@@ -1948,6 +1972,13 @@ fun AddCustomerDialog(
                         modifier = Modifier.weight(1f)
                     )
                 }
+
+                OutlinedTextField(
+                    value = invoiceNumber,
+                    onValueChange = { invoiceNumber = it },
+                    label = { Text(AppStrings.invoiceNumber(lang)) },
+                    modifier = Modifier.fillMaxWidth().testTag("cust_invoice_field")
+                )
 
                 // Referral Source picker
                 Text(text = AppStrings.selectReferrer(lang), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
@@ -1997,7 +2028,7 @@ fun AddCustomerDialog(
                                     name, mobile, altMobile, address, city, product,
                                     billText.toDoubleOrNull() ?: 0.0,
                                     pendingText.toDoubleOrNull() ?: 0.0,
-                                    notes, refType, refName
+                                    notes, refType, refName, invoiceNumber, modelDetail
                                 )
                             }
                         },
@@ -2123,13 +2154,27 @@ fun CustomerDetailScreen(viewModel: AppViewModel, customerId: Int, lang: Lang) {
                 Divider(modifier = Modifier.padding(vertical = 4.dp))
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(text = if (lang == Lang.EN) "Purchased product" else "ખરીદેલ ફોન", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(text = customer.productPurchased, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
+                        if (customer.modelDetail.isNotEmpty()) {
+                            Text(
+                                text = "(${customer.modelDetail})",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        }
                     }
-                    Column(horizontalAlignment = Alignment.End) {
+                    Column(horizontalAlignment = Alignment.End, modifier = Modifier.weight(1f)) {
                         Text(text = if (lang == Lang.EN) "Total Bill" else "કુલ બિલ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(text = "₹${customer.totalBillAmount.toInt()}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary))
+                        if (customer.invoiceNumber.isNotEmpty()) {
+                            Text(
+                                text = "Inv: #${customer.invoiceNumber}",
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 }
             }
@@ -2163,8 +2208,12 @@ fun CustomerDetailScreen(viewModel: AppViewModel, customerId: Int, lang: Lang) {
                     val amount = activeDue?.dueAmount ?: customer.pendingAmount
                     val date = activeDue?.dueDate ?: viewModel.repository.getTodayDateString()
                     
-                    // Trigger dispatch
-                    viewModel.sendWhatsAppReminder(customer.id, customer.customerName, amount, date, lang == Lang.GU)
+                    viewModel.whatsAppReminderDialogData.value = WhatsAppReminderData(
+                        customerName = customer.customerName,
+                        mobileNumber = customer.mobileNumber,
+                        amount = amount,
+                        dueDate = date
+                    )
                 },
                 modifier = Modifier
                     .weight(1.2f)
@@ -3233,19 +3282,12 @@ fun ReferralProfile(
                                 // 1. WhatsApp Customer directly
                                 Button(
                                     onClick = {
-                                        val templ = viewModel.gujaratiTemplateState.value
-                                        val customMsg = templ
-                                            .replace("{customer_name}", customer.customerName)
-                                            .replace("{due_amount}", calculatedPendingAmt.toInt().toString())
-                                            .replace("{due_date}", dueDateVal)
-                                            .replace("{shop_name}", "Phone World")
-
-                                        viewModel.sendWhatsAppReminder(customer.id, customer.customerName, calculatedPendingAmt, dueDateVal, true)
-
-                                        try {
-                                            val uri = "https://api.whatsapp.com/send?phone=${customer.mobileNumber}&text=${android.net.Uri.encode(customMsg)}"
-                                            context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(uri)).apply { flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK })
-                                        } catch (e: Exception) {}
+                                        viewModel.whatsAppReminderDialogData.value = WhatsAppReminderData(
+                                            customerName = customer.customerName,
+                                            mobileNumber = customer.mobileNumber,
+                                            amount = calculatedPendingAmt,
+                                            dueDate = dueDateVal
+                                        )
                                     },
                                     shape = RoundedCornerShape(8.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
@@ -3795,6 +3837,145 @@ fun TemplateConfigDialog(viewModel: AppViewModel, lang: Lang, onDismiss: () -> U
     }
 }
 
+data class WhatsAppReminderData(
+    val customerName: String,
+    val mobileNumber: String,
+    val amount: Double,
+    val dueDate: String
+)
+
+@Composable
+fun WhatsAppReminderDialog(
+    data: WhatsAppReminderData,
+    viewModel: AppViewModel,
+    lang: Lang,
+    onDismiss: () -> Unit
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val englishTemplate by viewModel.englishTemplateState.collectAsState()
+    val gujaratiTemplate by viewModel.gujaratiTemplateState.collectAsState()
+    
+    var selectedLanguage by remember { mutableStateOf("English") }
+    
+    // Compute customized message based on selected template language
+    val templateText = if (selectedLanguage == "English") englishTemplate else gujaratiTemplate
+    val populatedMessage = templateText
+        .replace("{customer_name}", data.customerName)
+        .replace("{due_amount}", data.amount.toInt().toString())
+        .replace("{due_date}", data.dueDate)
+        .replace("{shop_name}", "Phone World")
+        
+    var editableMessage by remember(populatedMessage) { mutableStateOf(populatedMessage) }
+    
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(
+                modifier = Modifier.padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = if (lang == Lang.EN) "Send WhatsApp Reminder" else "વોટ્સએપ રીમાઇન્ડર મોકલો",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                
+                Text(
+                    text = if (lang == Lang.EN) "Select Template Language:" else "ટેમ્પલેટ ભાષા પસંદ કરો:",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = selectedLanguage == "English",
+                        onClick = { selectedLanguage = "English" },
+                        label = { Text("English", fontSize = 11.sp) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                    FilterChip(
+                        selected = selectedLanguage == "Gujarati",
+                        onClick = { selectedLanguage = "Gujarati" },
+                        label = { Text("ગુજરાતી (Gujarati)", fontSize = 11.sp) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        modifier = Modifier.weight(1.2f)
+                    )
+                }
+                
+                Text(
+                    text = if (lang == Lang.EN) "Message Preview (Editable):" else "સંદેશ પૂર્વાવલોકન (સુધારી શકાય તેવું):",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                OutlinedTextField(
+                    value = editableMessage,
+                    onValueChange = { editableMessage = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(140.dp)
+                        .testTag("whatsapp_editable_message"),
+                    textStyle = MaterialTheme.typography.bodyMedium,
+                    maxLines = 6
+                )
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text(AppStrings.cancel(lang))
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            // Log the activity to local/network DB
+                            viewModel.sendWhatsAppReminder(0, data.customerName, data.amount, data.dueDate, selectedLanguage == "Gujarati")
+                            
+                            // Open actual WhatsApp intent!
+                            try {
+                                val uri = "https://api.whatsapp.com/send?phone=${data.mobileNumber}&text=${android.net.Uri.encode(editableMessage)}"
+                                val intent = android.content.Intent(
+                                    android.content.Intent.ACTION_VIEW,
+                                    android.net.Uri.parse(uri)
+                                ).apply {
+                                    flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                                }
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                // Fallback
+                            }
+                            onDismiss()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
+                        modifier = Modifier.testTag("whatsapp_send_msg_btn")
+                    ) {
+                        Icon(imageVector = Icons.Default.Send, contentDescription = "Send", modifier = Modifier.size(16.dp), tint = Color.White)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(if (lang == Lang.EN) "Send via WhatsApp" else "વોટ્સએપ દ્વારા મોકલો", color = Color.White)
+                    }
+                }
+            }
+        }
+    }
+}
+
 // ==========================================
 // OUTSTANDING EMERGENCY CRITICAL ZONE SCREEN
 // ==========================================
@@ -3989,12 +4170,12 @@ fun CriticalZoneScreen(viewModel: AppViewModel, lang: Lang) {
                             // WhatsApp Action
                             Button(
                                 onClick = {
-                                    val msg = "નમસ્તે ${customer.customerName}, Phone World તરફથી યાદ અપાવવામાં આવે છે કે તમારી ચુકવણી ખૂબ જ લાંબા સમયથી વિલંબિત છે. કૃપા કરીને વહેલી તકે ₹${due.dueAmount.toInt()} ચૂકવવા મદદ કરશો."
-                                    viewModel.sendWhatsAppReminder(customer.id, customer.customerName, due.dueAmount, due.dueDate, true)
-                                    try {
-                                        val uri = "https://api.whatsapp.com/send?phone=${customer.mobileNumber}&text=${android.net.Uri.encode(msg)}"
-                                        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(uri)).apply { flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK })
-                                    } catch (e: Exception) {}
+                                    viewModel.whatsAppReminderDialogData.value = WhatsAppReminderData(
+                                        customerName = customer.customerName,
+                                        mobileNumber = customer.mobileNumber,
+                                        amount = due.dueAmount,
+                                        dueDate = due.dueDate
+                                    )
                                 },
                                 shape = RoundedCornerShape(10.dp),
                                 modifier = Modifier.weight(1.2f),
