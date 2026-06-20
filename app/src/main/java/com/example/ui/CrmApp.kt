@@ -2740,6 +2740,22 @@ fun ReferralsScreen(viewModel: AppViewModel, lang: Lang) {
 
     var showAddReferrerDialog by remember { mutableStateOf(false) }
     var selectedProfileReferrer by remember { mutableStateOf<ReferralPerson?>(null) }
+    var activeReferrerReminderData by remember { mutableStateOf<ReferralPerson?>(null) }
+
+    val activeReferrer = activeReferrerReminderData
+    if (activeReferrer != null) {
+        val refereeCusts = customers.filter { c ->
+            referrals.any { r -> r.customerId == c.id && r.referrerName == activeReferrer.fullName }
+        }
+        ReferrerReminderDialog(
+            referrer = activeReferrer,
+            refereeCustomers = refereeCusts,
+            dues = dues,
+            viewModel = viewModel,
+            lang = lang,
+            onDismiss = { activeReferrerReminderData = null }
+        )
+    }
 
     val activeProfile = selectedProfileReferrer
     if (activeProfile != null) {
@@ -2860,15 +2876,10 @@ fun ReferralsScreen(viewModel: AppViewModel, lang: Lang) {
                                     Icon(imageVector = Icons.Default.Call, contentDescription = "Call", tint = MaterialTheme.colorScheme.primary)
                                 }
 
-                                // WhatsApp Dynamic Trigger Button with Gujarati message template
+                                // WhatsApp Statement and Reminder Trigger Dialog
                                 IconButton(
                                     onClick = {
-                                        val msg = "નમસ્તે ${person.fullName}, તમારા દ્વારા રેફર કરાયેલા કેટલાક ગ્રાહકોની ચુકવણી બાકી છે. કૃપા કરીને તેમને Phone World નો સંપર્ક કરવા જણાવશો."
-                                        viewModel.sendReferralWhatsAppReminder(person.id, person.fullName, msg)
-                                        try {
-                                            val uri = "https://api.whatsapp.com/send?phone=${person.mobileNumber}&text=${android.net.Uri.encode(msg)}"
-                                            context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(uri)).apply { flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK })
-                                        } catch (e: Exception) {}
+                                        activeReferrerReminderData = person
                                     },
                                     modifier = Modifier.testTag("whatsapp_ref_btn_${person.id}")
                                 ) {
@@ -3032,6 +3043,8 @@ fun ReferralProfile(
     val dues by viewModel.duesList.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
 
+    var showReferrerReminderDialog by remember { mutableStateOf(false) }
+
     // Referee customers referred by this person
     val refereeCustomers = remember(customers, referrals, referrer) {
         customers.filter { c ->
@@ -3046,6 +3059,17 @@ fun ReferralProfile(
 
     val totalSales = remember(refereeCustomers) {
         refereeCustomers.sumOf { it.totalBillAmount }
+    }
+
+    if (showReferrerReminderDialog) {
+        ReferrerReminderDialog(
+            referrer = referrer,
+            refereeCustomers = refereeCustomers,
+            dues = dues,
+            viewModel = viewModel,
+            lang = lang,
+            onDismiss = { showReferrerReminderDialog = false }
+        )
     }
 
     Column(
@@ -3117,6 +3141,55 @@ fun ReferralProfile(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
+            }
+        }
+
+        // Action card for Report Export and Notification Center
+        Card(
+            modifier = Modifier.fillMaxWidth().testTag("referral_report_notification_card"),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+        ) {
+            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = if (lang == Lang.EN) "Referral Reports & Notifications" else "રેફરલ રિપોર્ટ્સ અને સૂચનાઓ",
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = if (lang == Lang.EN) 
+                        "Send a detailed statement including customer phone numbers, outstanding dues, dates, and invoice numbers." 
+                        else "ગ્રાહકના ફોન નંબર, બાકી હપ્તો, તારીખ અને ઇન્વોઇસ નંબર દર્શાવતી સવિસ્તર વિગત રેફરલને મોકલો.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            showReferrerReminderDialog = true
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
+                        modifier = Modifier.weight(1f).height(40.dp).testTag("send_referrer_all_due_whatsapp")
+                    ) {
+                        Icon(imageVector = Icons.Default.Send, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(if (lang == Lang.EN) "Remind via WA" else "WA દ્વારા જણાવો", fontSize = 11.sp, color = Color.White)
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            shareReferralCsvReport(context, referrer, refereeCustomers, dues)
+                        },
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                        modifier = Modifier.weight(1f).height(40.dp).testTag("share_referrer_excel_btn")
+                    ) {
+                        Icon(imageVector = Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(if (lang == Lang.EN) "Share Excel (CSV)" else "એક્સેલ (CSV) શેર કરો", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                    }
                 }
             }
         }
@@ -3970,6 +4043,277 @@ fun WhatsAppReminderDialog(
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(if (lang == Lang.EN) "Send via WhatsApp" else "વોટ્સએપ દ્વારા મોકલો", color = Color.White)
                     }
+                }
+            }
+        }
+    }
+}
+
+fun shareReferralCsvReport(
+    context: android.content.Context,
+    referrer: ReferralPerson,
+    customers: List<Customer>,
+    dues: List<Due>
+) {
+    try {
+        // Construct CSV content (RFC 4180 compliant)
+        val csvHeader = "Customer Name,Phone Number,Due Amount,Due Date,Invoice Number,Status,Product Purchased\n"
+        val csvBody = StringBuilder()
+        
+        customers.forEach { customer ->
+            val custDues = dues.filter { it.customerId == customer.id && it.dueStatus != "Paid" && it.dueAmount > 0.0 }
+            val totalPending = custDues.sumOf { it.dueAmount }
+            val earliestDue = custDues.minByOrNull { it.dueDate }
+            val dueDateVal = earliestDue?.dueDate ?: customer.purchaseDate
+            val invoiceNoVal = customer.invoiceNumber.ifEmpty { "N/A" }
+            
+            // Format quotes to escape commas and special characters
+            val nameEscaped = customer.customerName.replace("\"", "\"\"")
+            val phoneEscaped = customer.mobileNumber.replace("\"", "\"\"")
+            val invoiceEscaped = invoiceNoVal.replace("\"", "\"\"")
+            val statusEscaped = if (totalPending > 0) "Pending" else "Paid"
+            val productEscaped = customer.productPurchased.replace("\"", "\"\"")
+            
+            csvBody.append("\"$nameEscaped\",\"$phoneEscaped\",$totalPending,\"$dueDateVal\",\"$invoiceEscaped\",\"$statusEscaped\",\"$productEscaped\"\n")
+        }
+        
+        val fullCsv = csvHeader + csvBody.toString()
+        
+        // Write to CACHE directory
+        val fileName = "Referrals_${referrer.fullName.replace(" ", "_")}_Report.csv"
+        val file = java.io.File(context.cacheDir, fileName)
+        file.writeText(fullCsv, Charsets.UTF_8)
+        
+        // Get FileProvider URI
+        val uri = androidx.core.content.FileProvider.getUriForFile(
+            context,
+            "com.example.fileprovider",
+            file
+        )
+        
+        // Launch Android Sharesheet
+        val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+            type = "text/csv"
+            putExtra(android.content.Intent.EXTRA_SUBJECT, "Referrals Report - ${referrer.fullName}")
+            putExtra(android.content.Intent.EXTRA_TEXT, "Attached is the referral customers status spreadsheet report for ${referrer.fullName}.")
+            putExtra(android.content.Intent.EXTRA_STREAM, uri)
+            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        
+        context.startActivity(android.content.Intent.createChooser(intent, "Share Referrals Report"))
+    } catch (e: Exception) {
+        android.widget.Toast.makeText(context, "Error sharing report: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+    }
+}
+
+@Composable
+fun ReferrerReminderDialog(
+    referrer: ReferralPerson,
+    refereeCustomers: List<Customer>,
+    dues: List<Due>,
+    viewModel: AppViewModel,
+    lang: Lang,
+    onDismiss: () -> Unit
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var selectedLanguage by remember { mutableStateOf("English") }
+    
+    // Compute total outstanding
+    val totalPending = refereeCustomers.sumOf { customer ->
+        val custDues = dues.filter { it.customerId == customer.id && it.dueStatus != "Paid" && it.dueAmount > 0.0 }
+        custDues.sumOf { it.dueAmount }
+    }
+    
+    // Build initial message based on selected language
+    val populatedMessage = remember(referrer, refereeCustomers, dues, selectedLanguage) {
+        val sb = StringBuilder()
+        if (selectedLanguage == "English") {
+            sb.append("Hello ${referrer.fullName},\n\n")
+            sb.append("Here is the update regarding the customers you referred to Phone World:\n\n")
+            
+            refereeCustomers.forEachIndexed { index, customer ->
+                val custDues = dues.filter { it.customerId == customer.id && it.dueStatus != "Paid" && it.dueAmount > 0.0 }
+                val totalPendingCust = custDues.sumOf { it.dueAmount }
+                val earliestDue = custDues.minByOrNull { it.dueDate }
+                val dueDateVal = earliestDue?.dueDate ?: customer.purchaseDate
+                val invoiceNoVal = customer.invoiceNumber.ifEmpty { "N/A" }
+                
+                sb.append("${index + 1}. ${customer.customerName}\n")
+                sb.append("   • Phone: ${customer.mobileNumber}\n")
+                sb.append("   • Due: ₹${totalPendingCust.toInt()}\n")
+                sb.append("   • Date: $dueDateVal\n")
+                sb.append("   • Inv No: $invoiceNoVal\n")
+                if (customer.productPurchased.isNotEmpty()) {
+                    sb.append("   • Item: ${customer.productPurchased}\n")
+                }
+                sb.append("\n")
+            }
+            
+            sb.append("Total Outstandings: ₹${totalPending.toInt()}\n\n")
+            sb.append("Could you please assist them in clearing their pending dues? Thank you!\nPhone World")
+        } else {
+            sb.append("નમસ્તે ${referrer.fullName},\n\n")
+            sb.append("તમારા દ્વારા રેફર કરાયેલા ગ્રાહકોના બાકી હપ્તાની સવિસ્તર વિગત નીચે મુજબ છે:\n\n")
+            
+            refereeCustomers.forEachIndexed { index, customer ->
+                val custDues = dues.filter { it.customerId == customer.id && it.dueStatus != "Paid" && it.dueAmount > 0.0 }
+                val totalPendingCust = custDues.sumOf { it.dueAmount }
+                val earliestDue = custDues.minByOrNull { it.dueDate }
+                val dueDateVal = earliestDue?.dueDate ?: customer.purchaseDate
+                val invoiceNoVal = customer.invoiceNumber.ifEmpty { "નથી" }
+                
+                // Gujarati numbers helper
+                val indexStr = (index + 1).toString()
+                    .replace('1', '૧')
+                    .replace('2', '૨')
+                    .replace('3', '૩')
+                    .replace('4', '૪')
+                    .replace('5', '૫')
+                    .replace('6', '૬')
+                    .replace('7', '૭')
+                    .replace('8', '૮')
+                    .replace('9', '૯')
+                    .replace('0', '૦')
+                
+                sb.append("$indexStr. ${customer.customerName}\n")
+                sb.append("   • ફોન: ${customer.mobileNumber}\n")
+                sb.append("   • બાકી હપ્તો: ₹${totalPendingCust.toInt()}\n")
+                sb.append("   • તારીખ: $dueDateVal\n")
+                sb.append("   • ઇન્વોઇસ: $invoiceNoVal\n")
+                if (customer.productPurchased.isNotEmpty()) {
+                    sb.append("   • ઉપકરણ: ${customer.productPurchased}\n")
+                }
+                sb.append("\n")
+            }
+            
+            sb.append("કુલ બાકી રકમ: ₹${totalPending.toInt()}\n\n")
+            sb.append("કૃપા કરીને તેમને વહેલી તકે હપ્તો ચૂકવવા જણાવવા વિનંતી છે.\nઆભાર, ફોન વર્લ્ડ")
+        }
+        sb.toString()
+    }
+    
+    var editableMessage by remember(populatedMessage) { mutableStateOf(populatedMessage) }
+    
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(18.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = if (lang == Lang.EN) "Referrer Statement & Reminder" else "રેફરર સ્ટેટમેન્ટ અને રીમાઇન્ડર",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                
+                Text(
+                    text = if (lang == Lang.EN) "Select Statement Language:" else "સ્ટેટમેન્ટ ભાષા પસંદ કરો:",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = selectedLanguage == "English",
+                        onClick = { selectedLanguage = "English" },
+                        label = { Text("English", fontSize = 11.sp) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                    FilterChip(
+                        selected = selectedLanguage == "Gujarati",
+                        onClick = { selectedLanguage = "Gujarati" },
+                        label = { Text("ગુજરાતી (Gujarati)", fontSize = 11.sp) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        modifier = Modifier.weight(1.2f)
+                    )
+                }
+                
+                Text(
+                    text = if (lang == Lang.EN) "Message Content (Editable):" else "સંદેશ વિગત (સુધારી શકાય તેવું):",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                OutlinedTextField(
+                    value = editableMessage,
+                    onValueChange = { editableMessage = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .testTag("referrer_editable_statement"),
+                    textStyle = MaterialTheme.typography.bodySmall,
+                    maxLines = 15
+                )
+                
+                // Actions
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            shareReferralCsvReport(context, referrer, refereeCustomers, dues)
+                        },
+                        modifier = Modifier.weight(1f).testTag("referrer_share_csv_button")
+                    ) {
+                        Icon(imageVector = Icons.Default.Share, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(if (lang == Lang.EN) "Share CSV" else "CSV શેર", fontSize = 11.sp)
+                    }
+                    
+                    Button(
+                        onClick = {
+                            // Log the activity to local/network DB
+                            viewModel.sendReferralWhatsAppReminder(referrer.id, referrer.fullName, editableMessage)
+                            
+                            // Open actual WhatsApp intent!
+                            try {
+                                val uri = "https://api.whatsapp.com/send?phone=${referrer.mobileNumber}&text=${android.net.Uri.encode(editableMessage)}"
+                                val intent = android.content.Intent(
+                                    android.content.Intent.ACTION_VIEW,
+                                    android.net.Uri.parse(uri)
+                                ).apply {
+                                    flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                                }
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                // Fallback
+                            }
+                            onDismiss()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
+                        modifier = Modifier.weight(1.2f).testTag("referrer_send_wa_button")
+                    ) {
+                        Icon(imageVector = Icons.Default.Send, contentDescription = "Send", modifier = Modifier.size(14.dp), tint = Color.White)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(if (lang == Lang.EN) "Send via WA" else "WA દ્વારા મોકલો", fontSize = 11.sp, color = Color.White)
+                    }
+                }
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                ) {
+                    Text(AppStrings.cancel(lang))
                 }
             }
         }
