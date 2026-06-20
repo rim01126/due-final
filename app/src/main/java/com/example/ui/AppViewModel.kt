@@ -16,6 +16,16 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val languageState = MutableStateFlow(Lang.EN)
     val darkThemeState = MutableStateFlow(true) // Defaults to Premium Dark Mode
 
+    // Secure MPIN State (Persisted in SharedPreferences)
+    private val prefs = application.getSharedPreferences("crm_app_prefs", android.content.Context.MODE_PRIVATE)
+    val mpinState = MutableStateFlow(prefs.getString("security_mpin", "1234") ?: "1234")
+
+    fun updateMpin(newMpin: String) {
+        prefs.edit().putString("security_mpin", newMpin).apply()
+        mpinState.value = newMpin
+        logActivity("Security", "MPIN updated successfully.")
+    }
+
     // Active Session Management
     val isLoggedInState = MutableStateFlow(false)
     val loginErrorState = MutableStateFlow<String?>(null)

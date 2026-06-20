@@ -85,6 +85,7 @@ fun CrmApp(viewModel: AppViewModel) {
     val staffName by viewModel.staffNameState.collectAsState()
     val selectedCustomerId by viewModel.selectedCustomerIdState.collectAsState()
     var showSupabaseInfoDialog by remember { mutableStateOf(false) }
+    var showMpinSettingsDialog by remember { mutableStateOf(false) }
     
     val currentLang = if (isGujarati == Lang.GU) Lang.GU else Lang.EN
     val languageContextState = remember(currentLang) {
@@ -137,6 +138,7 @@ fun CrmApp(viewModel: AppViewModel) {
                             .padding(end = 4.dp)
                             .clip(RoundedCornerShape(20.dp))
                             .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .clickable { showMpinSettingsDialog = true }
                             .padding(horizontal = 10.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -529,6 +531,14 @@ fun CrmApp(viewModel: AppViewModel) {
                 }
             }
         }
+    }
+
+    if (showMpinSettingsDialog) {
+        MpinSettingsDialog(
+            viewModel = viewModel,
+            lang = lang,
+            onDismiss = { showMpinSettingsDialog = false }
+        )
     }
 }
 }
@@ -2061,6 +2071,8 @@ fun CustomerDetailScreen(viewModel: AppViewModel, customerId: Int, lang: Lang) {
     var selectedDueToCollect by remember { mutableStateOf<Due?>(null) }
     var showAddDueDialog by remember { mutableStateOf(false) }
     var showAddFollowupDialog by remember { mutableStateOf(false) }
+    var pendingDeleteAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var deleteConfirmMessage by remember { mutableStateOf("") }
 
     val customer = customerState ?: return
 
@@ -2094,7 +2106,12 @@ fun CustomerDetailScreen(viewModel: AppViewModel, customerId: Int, lang: Lang) {
             if (currentRole == "Owner") {
                 IconButton(
                     onClick = {
-                        viewModel.deleteCustomer(customer)
+                        deleteConfirmMessage = if (lang == Lang.EN) 
+                            "This will permanently delete ${customer.customerName} along with all due schedules and history." 
+                            else "${customer.customerName} ના તમામ હપ્તા અને ઇતિહાસ સાથે કાયમી ધોરણે કાઢી નાખવામાં આવશે."
+                        pendingDeleteAction = {
+                            viewModel.deleteCustomer(customer)
+                        }
                     },
                     modifier = Modifier.testTag("delete_customer_button")
                 ) {
@@ -2361,7 +2378,14 @@ fun CustomerDetailScreen(viewModel: AppViewModel, customerId: Int, lang: Lang) {
 
                                             // Delete Due (Owner Only)
                                             if (currentRole == "Owner") {
-                                                IconButton(onClick = { viewModel.deleteDue(due.id, customerId) }) {
+                                                IconButton(onClick = {
+                                                    deleteConfirmMessage = if (lang == Lang.EN) 
+                                                        "Are you sure you want to delete this installment of ₹${due.dueAmount.toInt()}? This will alter total pending balances." 
+                                                        else "શું તમે ખરેખર ₹${due.dueAmount.toInt()} નો આ હપ્તો કાઢી નાખવા માંગો છો? આનાથી કુલ બાકી રકમો બદલાઈ જશે."
+                                                    pendingDeleteAction = {
+                                                        viewModel.deleteDue(due.id, customerId)
+                                                    }
+                                                }) {
                                                     Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete", tint = StatusColors.Critical)
                                                 }
                                             }
@@ -2498,6 +2522,16 @@ fun CustomerDetailScreen(viewModel: AppViewModel, customerId: Int, lang: Lang) {
                 viewModel.addFollowup(customerId, customer.customerName, notes, nextDate, promiseDate, status)
                 showAddFollowupDialog = false
             }
+        )
+    }
+
+    pendingDeleteAction?.let { action ->
+        DeleteMpinConfirmDialog(
+            onConfirm = action,
+            onDismiss = { pendingDeleteAction = null },
+            lang = lang,
+            viewModel = viewModel,
+            message = deleteConfirmMessage
         )
     }
 }
@@ -2741,6 +2775,8 @@ fun ReferralsScreen(viewModel: AppViewModel, lang: Lang) {
     var showAddReferrerDialog by remember { mutableStateOf(false) }
     var selectedProfileReferrer by remember { mutableStateOf<ReferralPerson?>(null) }
     var activeReferrerReminderData by remember { mutableStateOf<ReferralPerson?>(null) }
+    var pendingDeleteAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var deleteConfirmMessage by remember { mutableStateOf("") }
 
     val activeReferrer = activeReferrerReminderData
     if (activeReferrer != null) {
@@ -2887,7 +2923,14 @@ fun ReferralsScreen(viewModel: AppViewModel, lang: Lang) {
                                 }
                                 
                                 if (currentRole == "Owner") {
-                                    IconButton(onClick = { viewModel.deleteReferralPerson(person.id) }) {
+                                    IconButton(onClick = {
+                                        deleteConfirmMessage = if (lang == Lang.EN) 
+                                            "Are you sure you want to delete referrer ${person.fullName}? This will remove their record from referrals listing." 
+                                            else "શું તમે ખરેખર રેફરર ${person.fullName} ને કાઢી નાખવા માંગો છો? આનાથી તેમની વિગત રેફરલ લિસ્ટમાંથી દૂર થઈ જશે."
+                                        pendingDeleteAction = {
+                                            viewModel.deleteReferralPerson(person.id)
+                                        }
+                                    }) {
                                         Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete", tint = StatusColors.Critical)
                                     }
                                 }
@@ -2951,6 +2994,16 @@ fun ReferralsScreen(viewModel: AppViewModel, lang: Lang) {
                 viewModel.addReferralPerson(name, mobile, address, city, notes)
                 showAddReferrerDialog = false
             }
+        )
+    }
+
+    pendingDeleteAction?.let { action ->
+        DeleteMpinConfirmDialog(
+            onConfirm = action,
+            onDismiss = { pendingDeleteAction = null },
+            lang = lang,
+            viewModel = viewModel,
+            message = deleteConfirmMessage
         )
     }
 }
@@ -3421,6 +3474,8 @@ fun StaffScreen(viewModel: AppViewModel, lang: Lang) {
 
     var showAddStaffDialog by remember { mutableStateOf(false) }
     var selectedStaffForEdit by remember { mutableStateOf<StaffMember?>(null) }
+    var pendingDeleteAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var deleteConfirmMessage by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -3567,7 +3622,14 @@ fun StaffScreen(viewModel: AppViewModel, lang: Lang) {
                             }
                             
                             if (member.role != "Owner") {
-                                IconButton(onClick = { viewModel.deleteStaffMember(member.id) }) {
+                                IconButton(onClick = {
+                                    deleteConfirmMessage = if (lang == Lang.EN) 
+                                        "Are you sure you want to delete staff member ${member.name}? All historical collection entries logged under their name will be retained, but they will not be able to log in." 
+                                        else "શું તમે ખરેખર સ્ટાફ મેમ્બર ${member.name} ને કાઢી નાખવા માંગો છો? તેમના નામ હેઠળ સાચવેલા તમામ કલેક્શન આંકડા રહેશે પણ તેઓ લોગિન નહીં કરી શકે."
+                                    pendingDeleteAction = {
+                                        viewModel.deleteStaffMember(member.id)
+                                    }
+                                }) {
                                     Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete", tint = StatusColors.Critical)
                                 }
                             }
@@ -3588,6 +3650,16 @@ fun StaffScreen(viewModel: AppViewModel, lang: Lang) {
                 showAddStaffDialog = false
                 selectedStaffForEdit = null
             }
+        )
+    }
+
+    pendingDeleteAction?.let { action ->
+        DeleteMpinConfirmDialog(
+            onConfirm = action,
+            onDismiss = { pendingDeleteAction = null },
+            lang = lang,
+            viewModel = viewModel,
+            message = deleteConfirmMessage
         )
     }
 }
@@ -4566,6 +4638,237 @@ fun CriticalZoneScreen(viewModel: AppViewModel, lang: Lang) {
                     android.widget.Toast.makeText(context, "Collected ₹${amount.toInt()}!", android.widget.Toast.LENGTH_SHORT).show()
                 }
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MpinSettingsDialog(
+    viewModel: AppViewModel,
+    lang: Lang,
+    onDismiss: () -> Unit
+) {
+    val currentMpin by viewModel.mpinState.collectAsState()
+    var currentPinInput by remember { mutableStateOf("") }
+    var newPinInput by remember { mutableStateOf("") }
+    var confirmPinInput by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf("") }
+    var successMessage by remember { mutableStateOf("") }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            modifier = Modifier.padding(16.dp).fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(20.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = if (lang == Lang.EN) "Security MPIN Settings" else "સિક્યુરિટી MPIN સેટિંગ્સ",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Text(
+                    text = if (lang == Lang.EN) "This MPIN is required to confirm deleting customers, staff, or dues to prevent accidental data loss." else "આકસ્મિક ડેટા ખોવાઈ જતો અટકાવવા માટે ગ્રાહકો, સ્ટાફ અથવા હપ્તા કાઢી નાખવાની ખાતરી કરવા માટે આ MPIN જરૂરી છે.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                OutlinedTextField(
+                    value = currentPinInput,
+                    onValueChange = { if (it.all { c -> c.isDigit() } && it.length <= 8) currentPinInput = it },
+                    label = { Text(if (lang == Lang.EN) "Current MPIN" else "ચાલુ MPIN") },
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("settings_current_mpin")
+                )
+
+                OutlinedTextField(
+                    value = newPinInput,
+                    onValueChange = { if (it.all { c -> c.isDigit() } && it.length <= 8) newPinInput = it },
+                    label = { Text(if (lang == Lang.EN) "New MPIN (4-8 digits)" else "નવો MPIN (૪ થી ૮ અંકો)") },
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("settings_new_mpin")
+                )
+
+                OutlinedTextField(
+                    value = confirmPinInput,
+                    onValueChange = { if (it.all { c -> c.isDigit() } && it.length <= 8) confirmPinInput = it },
+                    label = { Text(if (lang == Lang.EN) "Confirm New MPIN" else "નવા MPIN ની પુષ્ટિ કરો") },
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("settings_confirm_mpin")
+                )
+
+                if (errorMessage.isNotEmpty()) {
+                    Text(text = errorMessage, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
+                }
+
+                if (successMessage.isNotEmpty()) {
+                    Text(text = successMessage, color = Color(0xFF4CAF50), style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text(AppStrings.cancel(lang))
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            errorMessage = ""
+                            successMessage = ""
+                            if (currentPinInput != currentMpin) {
+                                errorMessage = if (lang == Lang.EN) "Current MPIN is incorrect!" else "ચાલુ MPIN ખોટો છે!"
+                            } else if (newPinInput.length < 4) {
+                                errorMessage = if (lang == Lang.EN) "New MPIN must be at least 4 digits!" else "નવો MPIN ઓછામાં ઓછો ૪ અંકનો હોવો જોઈએ!"
+                            } else if (newPinInput != confirmPinInput) {
+                                errorMessage = if (lang == Lang.EN) "New MPIN inputs do not match!" else "નવા MPIN સરખા નથી!"
+                            } else {
+                                viewModel.updateMpin(newPinInput)
+                                successMessage = if (lang == Lang.EN) "MPIN updated successfully!" else "MPIN સફળતાપૂર્વક અપડેટ થયો!"
+                                currentPinInput = ""
+                                newPinInput = ""
+                                confirmPinInput = ""
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        modifier = Modifier.testTag("save_mpin_btn")
+                    ) {
+                        Text(if (lang == Lang.EN) "Save MPIN" else "MPIN સાચવો")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DeleteMpinConfirmDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    lang: Lang,
+    viewModel: AppViewModel,
+    message: String = ""
+) {
+    var pinText by remember { mutableStateOf("") }
+    var hasError by remember { mutableStateOf(false) }
+    val correctMpin by viewModel.mpinState.collectAsState()
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            modifier = Modifier.padding(16.dp).fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(20.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = null,
+                    tint = StatusColors.Critical,
+                    modifier = Modifier.size(40.dp)
+                )
+
+                Text(
+                    text = if (lang == Lang.EN) "Confirm Deletion with MPIN" else "MPIN સાથે કાઢી નાખવાની પુષ્ટિ કરો",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+
+                if (message.isNotEmpty()) {
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+
+                OutlinedTextField(
+                    value = pinText,
+                    onValueChange = { input ->
+                        if (input.length <= 8 && input.all { it.isDigit() }) {
+                            pinText = input
+                            hasError = false
+                        }
+                    },
+                    label = { Text(if (lang == Lang.EN) "Enter Secure MPIN" else "સિક્યુરિટી MPIN દાખલ કરો") },
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword
+                    ),
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    isError = hasError,
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("delete_mpin_input"),
+                    trailingIcon = {
+                        if (hasError) {
+                            Icon(imageVector = Icons.Default.Error, contentDescription = "Error", tint = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                )
+
+                if (hasError) {
+                    Text(
+                        text = if (lang == Lang.EN) "Incorrect MPIN! Try again." else "ખોટો MPIN! ફરીથી પ્રયાસ કરો.",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
+
+                Text(
+                    text = if (lang == Lang.EN) "Hint: Default MPIN is 1234. Change it in Workspace settings." else "સૂચના: ડિફોલ્ટ MPIN 1234 છે. તેને સેટિંગ્સમાં બદલો.",
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                    color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.8f),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(AppStrings.cancel(lang))
+                    }
+
+                    Button(
+                        onClick = {
+                            if (pinText == correctMpin) {
+                                onConfirm()
+                                onDismiss()
+                            } else {
+                                hasError = true
+                                pinText = ""
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = StatusColors.Critical),
+                        modifier = Modifier.weight(1f).testTag("delete_confirm_with_mpin_btn")
+                    ) {
+                        Text(if (lang == Lang.EN) "Verify & Delete" else "ચકાસો અને કાઢી નાખો", fontSize = 11.sp)
+                    }
+                }
+            }
         }
     }
 }
