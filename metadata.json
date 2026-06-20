@@ -1,0 +1,6 @@
+{
+  "name": "Phone World CRM",
+  "description": "Complete follow-up, overdue dues, collections, and referral CRM application for Phone World with built-in Gujarati/English support.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
