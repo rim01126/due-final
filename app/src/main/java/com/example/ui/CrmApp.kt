@@ -921,6 +921,86 @@ fun DashboardScreen(viewModel: AppViewModel, lang: Lang) {
             }
         }
 
+        // Daily Alerts: Overdue Installment dues older than 30 days
+        val duesOlderThan30Days = dues.filter {
+            it.dueStatus != "Paid" && calculateDaysPassed(it.dueDate) >= 30
+        }
+        if (duesOlderThan30Days.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(if (isSystemInDarkTheme()) Color(0xFF2E2300) else Color(0xFFFEF3C7))
+                    .border(
+                        width = 1.dp,
+                        color = if (isSystemInDarkTheme()) Color(0xFF533A00) else Color(0xFFFDE68A),
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                    .clickable {
+                        viewModel.currentRouteState.value = "reports"
+                    }
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFFD97706)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Notifications,
+                            contentDescription = "Notification",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = if (lang == Lang.EN) "DAILY ALERTS: OVERDUE DUES (>30 DAYS)" else "દૈનિક ચેતવણી: બાકી સાયરન (>૩૦ દિવસ)",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Black,
+                                color = if (isSystemInDarkTheme()) Color(0xFFFDE68A) else Color(0xFF78350F),
+                                letterSpacing = 0.5.sp
+                            )
+                        )
+                        Text(
+                            text = if (lang == Lang.EN) 
+                                "${duesOlderThan30Days.size} installments are pending for >30 days!" 
+                                else "${duesOlderThan30Days.size} હપ્તા ૩૦ દિવસથી વધુ સમયથી બાકી છે!",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSystemInDarkTheme()) Color(0xFFFDE68A) else Color(0xFF92400E)
+                            )
+                        )
+                    }
+                }
+                Button(
+                    onClick = {
+                        viewModel.currentRouteState.value = "reports"
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706)),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    modifier = Modifier.height(32.dp).testTag("act_view_overdue_btn")
+                ) {
+                    Text(
+                        text = if (lang == Lang.EN) "VIEW ALL" else "બધા જુઓ",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+            }
+        }
+
         // Core Financial Metrics Cards Section
         Text(
             text = if (lang == Lang.EN) "FINANCIAL OVERVIEW" else "નાણાકીય વિહંગાવલોકન",
@@ -1431,8 +1511,8 @@ fun DashboardScreen(viewModel: AppViewModel, lang: Lang) {
         AddCustomerDialog(
             lang = lang,
             onDismiss = { showAddCustomerDialogFromDash = false },
-            onSave = { name, mob, altM, addr, city, prod, price, pending, notes, refType, refName, invoiceNo, modelDet ->
-                viewModel.addCustomer(name, mob, altM, addr, city, prod, price, pending, notes, refType, refName, invoiceNo, modelDet)
+            onSave = { name, mob, altM, addr, city, prod, price, pending, notes, refType, refName, invoiceNo, modelDet, dueDays ->
+                viewModel.addCustomer(name, mob, altM, addr, city, prod, price, pending, notes, refType, refName, invoiceNo, modelDet, dueDays)
                 showAddCustomerDialogFromDash = false
                 android.widget.Toast.makeText(context, "Customer created successfully!", android.widget.Toast.LENGTH_SHORT).show()
             }
@@ -1767,11 +1847,80 @@ fun CustomersScreen(viewModel: AppViewModel, lang: Lang) {
         AddCustomerDialog(
             lang = lang,
             onDismiss = { showAddDialog = false },
-            onSave = { name, mob, altM, addr, city, prod, price, pending, notes, refType, refName, invoiceNo, modelDet ->
-                viewModel.addCustomer(name, mob, altM, addr, city, prod, price, pending, notes, refType, refName, invoiceNo, modelDet)
+            onSave = { name, mob, altM, addr, city, prod, price, pending, notes, refType, refName, invoiceNo, modelDet, dueDays ->
+                viewModel.addCustomer(name, mob, altM, addr, city, prod, price, pending, notes, refType, refName, invoiceNo, modelDet, dueDays)
                 showAddDialog = false
             }
         )
+    }
+}
+
+fun exportAgingDuesToCsv(
+    context: android.content.Context,
+    dues: List<Due>,
+    customers: List<Customer>,
+    minDays: Int
+) {
+    val filteredDues = dues.filter { d ->
+        d.dueStatus != "Paid" && calculateDaysPassed(d.dueDate) >= minDays
+    }
+    
+    val csvHeader = "Customer Name,Phone,Purchased Product,Purchase Date,Outstanding Due (Rs),Due Date,Days Elapsed,Notes\n"
+    val csvBody = StringBuilder()
+    for (d in filteredDues) {
+        val cust = customers.find { it.id == d.customerId }
+        val phone = cust?.mobileNumber ?: ""
+        val prod = cust?.productPurchased ?: ""
+        val purchDate = cust?.purchaseDate ?: ""
+        val daysElapsed = calculateDaysPassed(d.dueDate)
+        
+        val escapedName = d.customerName.replace(",", " ")
+        val escapedPhone = phone.replace(",", " ")
+        val escapedProd = prod.replace(",", " ")
+        val escapedPurchDate = purchDate.replace(",", " ")
+        val escapedDueDate = d.dueDate.replace(",", " ")
+        val escapedNotes = d.notes.replace(",", " ").replace("\n", " ")
+        
+        csvBody.append("$escapedName,$escapedPhone,$escapedProd,$escapedPurchDate,${d.dueAmount},$escapedDueDate,$daysElapsed,$escapedNotes\n")
+    }
+    
+    val csvContent = csvHeader + csvBody.toString()
+    
+    val cacheDir = context.cacheDir
+    val fileName = "Dues_Over_${minDays}_Days_Report.csv"
+    val file = java.io.File(cacheDir, fileName)
+    
+    try {
+        file.writeText(csvContent)
+        val uri = androidx.core.content.FileProvider.getUriForFile(
+            context,
+            "com.example.fileprovider",
+            file
+        )
+        val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+            type = "text/csv"
+            putExtra(android.content.Intent.EXTRA_STREAM, uri)
+            putExtra(android.content.Intent.EXTRA_SUBJECT, "Dues Aging Report (> $minDays Days)")
+            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(android.content.Intent.createChooser(intent, "Share Aging Report via..."))
+    } catch (e: Exception) {
+        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        val clip = android.content.ClipData.newPlainText("Dues Report CSV", csvContent)
+        clipboard.setPrimaryClip(clip)
+        android.widget.Toast.makeText(context, "Export error. CSV copied to Clipboard!", android.widget.Toast.LENGTH_LONG).show()
+    }
+}
+
+fun calculateDaysPassed(dateString: String): Long {
+    return try {
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        val date = sdf.parse(dateString) ?: return 0L
+        val currentDate = sdf.parse(sdf.format(Date())) ?: return 0L
+        val diff = currentDate.time - date.time
+        diff / (24 * 60 * 60 * 1000)
+    } catch (e: Exception) {
+        0L
     }
 }
 
@@ -1842,6 +1991,19 @@ fun CustomerListItem(customer: Customer, lang: Lang, onClick: () -> Unit) {
                         style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
                     )
                 }
+
+                // Purchase Date and Days Passed
+                val daysPassed = calculateDaysPassed(customer.purchaseDate)
+                val purchaseLabel = if (lang == Lang.EN) "Purchase Date" else "ખરીદી તારીખ"
+                val daysPassedLabel = if (lang == Lang.EN) "days passed" else "દિવસો પસાર થયા"
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "$purchaseLabel: ${customer.purchaseDate} ($daysPassed $daysPassedLabel)",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        fontSize = 11.sp
+                    )
+                )
             }
 
             Column(horizontalAlignment = Alignment.End) {
@@ -1879,7 +2041,7 @@ fun Icon(imageVector: ImageVector, contentDescription: String?, size: androidx.c
 fun AddCustomerDialog(
     lang: Lang,
     onDismiss: () -> Unit,
-    onSave: (name: String, mob: String, altM: String, addr: String, city: String, prod: String, price: Double, pending: Double, notes: String, refType: String, refName: String, invoiceNo: String, modelDet: String) -> Unit
+    onSave: (name: String, mob: String, altM: String, addr: String, city: String, prod: String, price: Double, pending: Double, notes: String, refType: String, refName: String, invoiceNo: String, modelDet: String, dueDays: Int) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var mobile by remember { mutableStateOf("") }
@@ -1892,6 +2054,7 @@ fun AddCustomerDialog(
     var billText by remember { mutableStateOf("") }
     var pendingText by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
+    var dueDays by remember { mutableStateOf(30) }
     
     // Referral Selection
     var refType by remember { mutableStateOf("Direct") }
@@ -1983,6 +2146,31 @@ fun AddCustomerDialog(
                     )
                 }
 
+                if ((pendingText.toDoubleOrNull() ?: 0.0) > 0.0) {
+                    Text(
+                        text = if (lang == Lang.EN) "Initial Installment Due Period" else "પ્રથમ હપ્તાની નિયત મુદત",
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilterChip(
+                            selected = dueDays == 30,
+                            onClick = { dueDays = 30 },
+                            label = { Text(if (lang == Lang.EN) "Standard (30 Days)" else "સામાન્ય (૩૦ દિવસ)") },
+                            modifier = Modifier.weight(1f).testTag("due_30_days_chip")
+                        )
+                        FilterChip(
+                            selected = dueDays == 6,
+                            onClick = { dueDays = 6 },
+                            label = { Text(if (lang == Lang.EN) "Pay after 6 Days" else "૬ દિવસ પછી ચૂકવશે") },
+                            modifier = Modifier.weight(1f).testTag("due_6_days_chip")
+                        )
+                    }
+                }
+
                 OutlinedTextField(
                     value = invoiceNumber,
                     onValueChange = { invoiceNumber = it },
@@ -2038,7 +2226,8 @@ fun AddCustomerDialog(
                                     name, mobile, altMobile, address, city, product,
                                     billText.toDoubleOrNull() ?: 0.0,
                                     pendingText.toDoubleOrNull() ?: 0.0,
-                                    notes, refType, refName, invoiceNumber, modelDetail
+                                    notes, refType, refName, invoiceNumber, modelDetail,
+                                    dueDays
                                 )
                             }
                         },
@@ -2194,6 +2383,20 @@ fun CustomerDetailScreen(viewModel: AppViewModel, customerId: Int, lang: Lang) {
                         }
                     }
                 }
+
+                Divider(modifier = Modifier.padding(vertical = 4.dp))
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(text = if (lang == Lang.EN) "Purchase Date" else "ખરીદી તારીખ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(text = customer.purchaseDate, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
+                    }
+                    Column(horizontalAlignment = Alignment.End, modifier = Modifier.weight(1f)) {
+                        Text(text = if (lang == Lang.EN) "Days Passed" else "દિવસો પસાર થયા", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        val days = calculateDaysPassed(customer.purchaseDate)
+                        Text(text = "$days " + (if (lang == Lang.EN) "days" else "દિવસો"), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary))
+                    }
+                }
             }
         }
 
@@ -2344,9 +2547,25 @@ fun CustomerDetailScreen(viewModel: AppViewModel, customerId: Int, lang: Lang) {
                                                     )
                                                 }
                                             }
+                                            val daysDiff = calculateDaysPassed(due.dueDate)
+                                            val daysPassedText = when {
+                                                daysDiff > 0 -> {
+                                                    if (lang == Lang.EN) " ($daysDiff days passed)" else " ($daysDiff દિવસો વીતી ગયા)"
+                                                }
+                                                daysDiff < 0 -> {
+                                                    val d = kotlin.math.abs(daysDiff)
+                                                    if (lang == Lang.EN) " ($d days left)" else " ($d દિવસો બાકી)"
+                                                }
+                                                else -> {
+                                                    if (lang == Lang.EN) " (Today)" else " (આજે)"
+                                                }
+                                            }
                                             Text(
-                                                text = "Due Date: ${due.dueDate}",
-                                                style = MaterialTheme.typography.bodySmall
+                                                text = "Due Date: ${due.dueDate}$daysPassedText",
+                                                style = MaterialTheme.typography.bodySmall.copy(
+                                                    fontWeight = if (daysDiff > 0) FontWeight.Bold else FontWeight.Normal,
+                                                    color = if (daysDiff > 0) StatusColors.Overdue else MaterialTheme.colorScheme.onSurface
+                                                )
                                             )
                                         }
                                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -3765,8 +3984,12 @@ fun ReportsScreen(viewModel: AppViewModel, lang: Lang) {
     val payments by viewModel.paymentsList.collectAsState()
     val followups by viewModel.followupsList.collectAsState()
     val reminders by viewModel.reminderLogsList.collectAsState()
+    val dues by viewModel.duesList.collectAsState()
+    val customers by viewModel.customersList.collectAsState()
     
-    var activeTab by remember { mutableStateOf("Payments") } // "Payments", "Followups", "Reminders"
+    val context = LocalContext.current
+    var activeTab by remember { mutableStateOf("Payments") } // "Payments", "Followups", "Reminders", "Dues Aging"
+    var agingFilterDays by remember { mutableStateOf(30) } // 30, 60, 180
 
     var showTemplateConfigDialog by remember { mutableStateOf(false) }
 
@@ -3799,23 +4022,32 @@ fun ReportsScreen(viewModel: AppViewModel, lang: Lang) {
             }
         }
 
-        // Segmented Tabs
+        // Segmented Tabs with horizontal scrolling for compactness on mobile views
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            val tabs = listOf("Payments", "Followups", "Reminders")
+            val tabs = listOf("Payments", "Followups", "Reminders", "Dues Aging")
             tabs.forEach { tab ->
                 val selected = activeTab == tab
+                val localizedTab = when (tab) {
+                    "Payments" -> if (lang == Lang.EN) "Payments" else "ચુકવણીઓ"
+                    "Followups" -> if (lang == Lang.EN) "Followups" else "ફોલોઅપ"
+                    "Reminders" -> if (lang == Lang.EN) "Reminders" else "રિમાઇન્ડર્સ"
+                    "Dues Aging" -> if (lang == Lang.EN) "Dues Aging" else "હપ્તા બાકી"
+                    else -> tab
+                }
                 Button(
                     onClick = { activeTab = tab },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                         contentColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                     ),
-                    modifier = Modifier.weight(1f).height(38.dp)
+                    modifier = Modifier.height(38.dp).testTag("tab_$tab")
                 ) {
-                    Text(tab, fontSize = 11.sp)
+                    Text(localizedTab, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -3903,6 +4135,139 @@ fun ReportsScreen(viewModel: AppViewModel, lang: Lang) {
                                 }
                                 Text(text = r.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                                 Text(text = "Dispatched by: ${r.sentBy}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                            }
+                        }
+                    }
+                }
+            }
+
+            "Dues Aging" -> {
+                val filteredDues = dues.filter { d ->
+                    d.dueStatus != "Paid" && calculateDaysPassed(d.dueDate) >= agingFilterDays
+                }
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = if (lang == Lang.EN) "Filter Installments by Pending Days" else "બાકી દિવસો દ્વારા બાકી રકમ ફિલ્ટર કરો",
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf(30, 60, 180).forEach { days ->
+                            val selected = agingFilterDays == days
+                            FilterChip(
+                                selected = selected,
+                                onClick = { agingFilterDays = days },
+                                label = { Text(if (lang == Lang.EN) "> $days Days" else "> $days દિવસ") },
+                                modifier = Modifier.weight(1f).testTag("aging_chip_$days")
+                            )
+                        }
+                    }
+
+                    // Direct Interactive Excel Download card
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f))
+                            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (lang == Lang.EN) "EXCEL EXPORT (CSV)" else "એક્સેલ નિકાસ (CSV)",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                            )
+                            Text(
+                                text = if (lang == Lang.EN) 
+                                    "Found ${filteredDues.size} overdue items > $agingFilterDays days." 
+                                    else "$agingFilterDays દિવસથી વધુના ${filteredDues.size} બાકી મળ્યા.",
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = {
+                                exportAgingDuesToCsv(context, dues, customers, agingFilterDays)
+                                viewModel.logActivity("Aging Export", "Exported dues > $agingFilterDays days to Excel CSV.")
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.testTag("export_aging_excel_btn")
+                        ) {
+                            Icon(imageVector = Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Excel (CSV)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    if (filteredDues.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (lang == Lang.EN) 
+                                    "Awesome! No dues are pending for more than $agingFilterDays days." 
+                                    else "બધું બરાબર છે! $agingFilterDays દિવસથી વધુનો કોઈ હપ્તો બાકી નથી.",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    } else {
+                        filteredDues.forEach { d ->
+                            val parsedDays = calculateDaysPassed(d.dueDate)
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                        Text(text = d.customerName, fontWeight = FontWeight.Bold)
+                                        Text(
+                                            text = "₹${d.dueAmount.toInt()}", 
+                                            fontWeight = FontWeight.Black, 
+                                            color = if (parsedDays >= 60) StatusColors.Critical else StatusColors.Overdue
+                                        )
+                                    }
+                                    
+                                    val cust = customers.find { it.id == d.customerId }
+                                    cust?.let { c ->
+                                        Text(
+                                            text = "${if (lang == Lang.EN) "Phone" else "ફોન"}: ${c.mobileNumber} • ${if (lang == Lang.EN) "Product" else "ઉત્પાદન"}: ${c.productPurchased}", 
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(), 
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "Due Date: ${d.dueDate}", 
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                        Text(
+                                            text = if (lang == Lang.EN) "$parsedDays days passed" else "$parsedDays દિવસો વીતી ગયા", 
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black),
+                                            color = if (parsedDays >= 60) StatusColors.Critical else StatusColors.Overdue
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

@@ -233,7 +233,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         referredByType: String,
         referrerName: String,
         invoiceNumber: String = "",
-        modelDetail: String = ""
+        modelDetail: String = "",
+        dueDays: Int = 30
     ) {
         viewModelScope.launch {
             val status = if (pending <= 0.0) "Paid" else "Pending"
@@ -257,7 +258,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             // If there's a pending amount, auto-create a default Due installation
             if (pending > 0.0) {
                 val cal = java.util.Calendar.getInstance()
-                cal.add(java.util.Calendar.DAY_OF_YEAR, 30) // Due in 30 days
+                cal.add(java.util.Calendar.DAY_OF_YEAR, dueDays) // Due in dueDays
                 val dateStr = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(cal.time)
                 
                 val due = Due(
@@ -267,7 +268,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     dueDate = dateStr,
                     reminderDate = dateStr,
                     dueStatus = "Pending",
-                    notes = "Direct auto installments",
+                    notes = if (dueDays == 6) "Pay after 6 days promise" else "Direct auto installments",
                     invoiceNumber = invoiceNumber
                 )
                 repository.addDue(due, staffNameState.value)
