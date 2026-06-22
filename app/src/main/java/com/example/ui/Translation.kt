@@ -116,4 +116,6 @@ object AppStrings {
     fun gujaratiTemplateTitle(lang: Lang) = if (lang == Lang.EN) "Gujarati Notification Content" else "ગુજરાતી રિમાઇન્ડર ટેમ્પલેટ"
     fun invoiceNumber(lang: Lang) = if (lang == Lang.EN) "Invoice Number (Optional)" else "ભરતિયું / ઇન્વોઇસ નંબર (વૈકલ્પિક)"
     fun modelDetail(lang: Lang) = if (lang == Lang.EN) "Model Detail (Color, RAM, Storage)" else "મોડલ વિગત (કલર, રેમ, સ્ટોરેજ)"
+    fun followUpDueToday(lang: Lang) = if (lang == Lang.EN) "Follow-Up Today" else "આજે ફોલો-અપ"
+    fun followUpOverdueDays(lang: Lang) = if (lang == Lang.EN) "Follow-Up Overdue" else "મુદત વીતી ગયેલ ફોલો-અપ"
 }

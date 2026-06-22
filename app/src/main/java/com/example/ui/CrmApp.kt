@@ -1782,12 +1782,32 @@ fun DashboardTaskCard(label: String, count: String, subText: String, color: Colo
 // ==========================================
 // SCREEN 2: THE ROBUST CUSTOMERS DIRECTORY
 // ==========================================
+/**
+ * Utility function to check if a customer has a pending or incomplete follow-up
+ * scheduled for today or has already passed.
+ */
+fun getOverdueOrTodayFollowUp(
+    customerId: Int,
+    followups: List<PaymentFollowup>,
+    todayStr: String
+): PaymentFollowup? {
+    return followups.firstOrNull { f ->
+        f.customerId == customerId &&
+        f.status != "Completed" &&
+        f.status != "Paid" &&
+        f.nextFollowUpDate.isNotEmpty() &&
+        f.nextFollowUpDate <= todayStr
+    }
+}
+
 @Composable
 fun CustomersScreen(viewModel: AppViewModel, lang: Lang) {
     val customers by viewModel.customersList.collectAsState()
     val searchQuery by viewModel.searchCustomerQueryState.collectAsState()
     val filterStatus by viewModel.filterStatusState.collectAsState()
     val currentRole by viewModel.currentRoleState.collectAsState()
+    val followups by viewModel.followupsList.collectAsState()
+    val todayStr = remember { viewModel.repository.getTodayDateString() }
     
     var showAddDialog by remember { mutableStateOf(false) }
 
@@ -1891,7 +1911,17 @@ fun CustomersScreen(viewModel: AppViewModel, lang: Lang) {
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(filteredCustomers) { customer ->
-                        CustomerListItem(customer = customer, lang = lang) {
+                        val overdueOrTodayFollowUp = getOverdueOrTodayFollowUp(customer.id, followups, todayStr)
+                        val hasFollowUpDue = overdueOrTodayFollowUp != null
+                        val dueFollowUpDate = overdueOrTodayFollowUp?.nextFollowUpDate ?: ""
+
+                        CustomerListItem(
+                            customer = customer,
+                            lang = lang,
+                            hasFollowUpDue = hasFollowUpDue,
+                            dueFollowUpDate = dueFollowUpDate,
+                            todayStr = todayStr
+                        ) {
                             viewModel.selectedCustomerIdState.value = customer.id
                         }
                     }
@@ -2100,14 +2130,37 @@ fun calculateDaysPassed(dateString: String): Long {
 }
 
 @Composable
-fun CustomerListItem(customer: Customer, lang: Lang, onClick: () -> Unit) {
+fun CustomerListItem(
+    customer: Customer,
+    lang: Lang,
+    hasFollowUpDue: Boolean = false,
+    dueFollowUpDate: String = "",
+    todayStr: String = "",
+    onClick: () -> Unit
+) {
+    val borderStroke = if (hasFollowUpDue) {
+        val isToday = dueFollowUpDate == todayStr
+        val highlightColor = if (isToday) StatusColors.Pending else StatusColors.Overdue
+        BorderStroke(1.5.dp, highlightColor)
+    } else {
+        BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    }
+
+    val containerColor = if (hasFollowUpDue) {
+        val isToday = dueFollowUpDate == todayStr
+        val highlightBg = if (isToday) StatusColors.PendingBg.copy(alpha = 0.25f) else StatusColors.OverdueBg.copy(alpha = 0.25f)
+        highlightBg
+    } else {
+        MaterialTheme.colorScheme.surface
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .testTag("customer_card_${customer.id}"),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = borderStroke
     ) {
         Row(
             modifier = Modifier
@@ -2165,6 +2218,40 @@ fun CustomerListItem(customer: Customer, lang: Lang, onClick: () -> Unit) {
                         text = "${AppStrings.productPurchased(lang)}: ${customer.productPurchased}",
                         style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
                     )
+                }
+
+                // If this customer has an overdue or today's follow-up, render a highlight badge
+                if (hasFollowUpDue && dueFollowUpDate.isNotEmpty()) {
+                    val isToday = dueFollowUpDate == todayStr
+                    val badgeBg = if (isToday) StatusColors.PendingBg else StatusColors.OverdueBg
+                    val badgeTextColor = if (isToday) StatusColors.Pending else StatusColors.Overdue
+                    val badgeText = if (isToday) AppStrings.followUpDueToday(lang) else AppStrings.followUpOverdueDays(lang)
+                    val badgeIcon = if (isToday) Icons.Default.Schedule else Icons.Default.Warning
+
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(badgeBg)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = badgeIcon,
+                                contentDescription = null,
+                                size = 12.dp,
+                                tint = badgeTextColor
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "$badgeText: $dueFollowUpDate",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = badgeTextColor
+                                )
+                            )
+                        }
+                    }
                 }
 
                 // Purchase Date and Days Passed
