@@ -1912,6 +1912,122 @@ fun CustomersScreen(viewModel: AppViewModel, lang: Lang) {
     }
 }
 
+fun exportStaffReferralsToCsv(
+    context: android.content.Context,
+    staffName: String,
+    customers: List<Customer>,
+    referrals: List<CustomerReferral>,
+    dues: List<Due>
+) {
+    val staffReferrals = if (staffName == "All Staff" || staffName == "બધા સ્ટાફ") {
+        referrals.filter { it.referredByType.equals("Staff", ignoreCase = true) || it.referredByType.equals("Owner", ignoreCase = true) }
+    } else {
+        referrals.filter { 
+            (it.referredByType.equals("Staff", ignoreCase = true) || it.referredByType.equals("Owner", ignoreCase = true)) && 
+            it.referrerName.equals(staffName, ignoreCase = true)
+        }
+    }
+    
+    val staffCustIds = staffReferrals.map { it.customerId }.toSet()
+    val referredCusts = customers.filter { it.id in staffCustIds }
+    
+    val csvHeader = "Staff Member,Referred Customer,Phone,Product,Purchase Date,Invoice Number,Total Bill (Rs),Pending Amount (Rs),Due Status\n"
+    val csvBody = StringBuilder()
+    
+    for (cust in referredCusts) {
+        val custDues = dues.filter { it.customerId == cust.id && it.dueStatus != "Paid" }
+        val pendingTotal = custDues.sumOf { it.dueAmount }
+        
+        val actualReferrer = staffReferrals.find { it.customerId == cust.id }?.referrerName ?: staffName
+        
+        val nameEscaped = cust.customerName.replace(",", " ")
+        val phoneEscaped = cust.mobileNumber.replace(",", " ")
+        val productEscaped = cust.productPurchased.replace(",", " ")
+        val dateEscaped = cust.purchaseDate.replace(",", " ")
+        val invoiceEscaped = cust.invoiceNumber.ifEmpty { "N/A" }.replace(",", " ")
+        val statusEscaped = cust.status.replace(",", " ")
+        
+        csvBody.append("\"$actualReferrer\",\"$nameEscaped\",\"$phoneEscaped\",\"$productEscaped\",\"$dateEscaped\",\"$invoiceEscaped\",${cust.totalBillAmount},$pendingTotal,\"$statusEscaped\"\n")
+    }
+    
+    val csvContent = csvHeader + csvBody.toString()
+    val cacheDir = context.cacheDir
+    val fileName = "Staff_${staffName.replace(" ", "_").replace("[^a-zA-Z0-9]".toRegex(), "")}_Referrals.csv"
+    val file = java.io.File(cacheDir, fileName)
+    
+    try {
+        file.writeText(csvContent, Charsets.UTF_8)
+        val uri = androidx.core.content.FileProvider.getUriForFile(
+            context,
+            "com.example.fileprovider",
+            file
+        )
+        val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+            type = "text/csv"
+            putExtra(android.content.Intent.EXTRA_STREAM, uri)
+            putExtra(android.content.Intent.EXTRA_SUBJECT, "$staffName's Referral Performance Report")
+            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(android.content.Intent.createChooser(intent, "Share Staff Referrals Summary"))
+    } catch (e: Exception) {
+        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        val clip = android.content.ClipData.newPlainText("Staff Referrals CSV", csvContent)
+        clipboard.setPrimaryClip(clip)
+        android.widget.Toast.makeText(context, "Export error. CSV copied to Clipboard!", android.widget.Toast.LENGTH_LONG).show()
+    }
+}
+
+fun exportReferralsDueToCsv(
+    context: android.content.Context,
+    customers: List<Customer>,
+    referrals: List<CustomerReferral>,
+    dues: List<Due>
+) {
+    val csvHeader = "Referrer Name,Referrer Type,Referred Customer,Phone,Product,Total Bill (Rs),Pending Due Amount (Rs),Due Status\n"
+    val csvBody = StringBuilder()
+    
+    for (ref in referrals) {
+        val cust = customers.find { it.id == ref.customerId } ?: continue
+        val custDues = dues.filter { it.customerId == cust.id && it.dueStatus != "Paid" }
+        val pendingTotal = custDues.sumOf { it.dueAmount }
+        
+        val nameEscaped = cust.customerName.replace(",", " ")
+        val phoneEscaped = cust.mobileNumber.replace(",", " ")
+        val productEscaped = cust.productPurchased.replace(",", " ")
+        val referrerNameEscaped = ref.referrerName.replace(",", " ")
+        val referrerTypeEscaped = ref.referredByType.replace(",", " ")
+        val statusEscaped = cust.status.replace(",", " ")
+        
+        csvBody.append("\"$referrerNameEscaped\",\"$referrerTypeEscaped\",\"$nameEscaped\",\"$phoneEscaped\",\"$productEscaped\",${cust.totalBillAmount},$pendingTotal,\"$statusEscaped\"\n")
+    }
+    
+    val csvContent = csvHeader + csvBody.toString()
+    val cacheDir = context.cacheDir
+    val fileName = "Referred_Customers_Outstanding_Dues.csv"
+    val file = java.io.File(cacheDir, fileName)
+    
+    try {
+        file.writeText(csvContent, Charsets.UTF_8)
+        val uri = androidx.core.content.FileProvider.getUriForFile(
+            context,
+            "com.example.fileprovider",
+            file
+        )
+        val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+            type = "text/csv"
+            putExtra(android.content.Intent.EXTRA_STREAM, uri)
+            putExtra(android.content.Intent.EXTRA_SUBJECT, "Referred Customers Outstanding Dues Report")
+            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(android.content.Intent.createChooser(intent, "Share Referred Dues summary"))
+    } catch (e: Exception) {
+        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        val clip = android.content.ClipData.newPlainText("Referred Dues CSV", csvContent)
+        clipboard.setPrimaryClip(clip)
+        android.widget.Toast.makeText(context, "Export error. CSV copied to Clipboard!", android.widget.Toast.LENGTH_LONG).show()
+    }
+}
+
 fun exportAgingDuesToCsv(
     context: android.content.Context,
     dues: List<Due>,
@@ -4028,10 +4144,13 @@ fun ReportsScreen(viewModel: AppViewModel, lang: Lang) {
     val reminders by viewModel.reminderLogsList.collectAsState()
     val dues by viewModel.duesList.collectAsState()
     val customers by viewModel.customersList.collectAsState()
+    val staffList by viewModel.staffMemberList.collectAsState()
+    val customerReferrals by viewModel.customerReferralsList.collectAsState()
     
     val context = LocalContext.current
-    var activeTab by remember { mutableStateOf("Payments") } // "Payments", "Followups", "Reminders", "Dues Aging"
+    var activeTab by remember { mutableStateOf("Payments") } // "Payments", "Followups", "Reminders", "Dues Aging", "Referrals & Staff"
     var agingFilterDays by remember { mutableStateOf(30) } // 30, 60, 180
+    var selectedStaffName by remember { mutableStateOf("All Staff") }
 
     var showTemplateConfigDialog by remember { mutableStateOf(false) }
 
@@ -4071,7 +4190,7 @@ fun ReportsScreen(viewModel: AppViewModel, lang: Lang) {
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            val tabs = listOf("Payments", "Followups", "Reminders", "Dues Aging")
+            val tabs = listOf("Payments", "Followups", "Reminders", "Dues Aging", "Referrals & Staff")
             tabs.forEach { tab ->
                 val selected = activeTab == tab
                 val localizedTab = when (tab) {
@@ -4079,6 +4198,7 @@ fun ReportsScreen(viewModel: AppViewModel, lang: Lang) {
                     "Followups" -> if (lang == Lang.EN) "Followups" else "ફોલોઅપ"
                     "Reminders" -> if (lang == Lang.EN) "Reminders" else "રિમાઇન્ડર્સ"
                     "Dues Aging" -> if (lang == Lang.EN) "Dues Aging" else "હપ્તા બાકી"
+                    "Referrals & Staff" -> if (lang == Lang.EN) "Referrals & Staff" else "રેફરલ્સ અને સ્ટાફ"
                     else -> tab
                 }
                 Button(
@@ -4094,23 +4214,25 @@ fun ReportsScreen(viewModel: AppViewModel, lang: Lang) {
             }
         }
 
-        // Export Actions row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(text = "Live $activeTab records table", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
-            
-            Button(
-                onClick = {
-                    viewModel.logActivity("Export", "Exported $activeTab Report successfully.")
-                },
-                modifier = Modifier.height(34.dp).testTag("export_btn")
+        // Export Actions row (Only for standard logging tabs)
+        if (activeTab != "Referrals & Staff") {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(imageVector = Icons.Default.Download, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.White)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(AppStrings.exportReport(lang), fontSize = 10.sp)
+                Text(text = "Live $activeTab records table", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                
+                Button(
+                    onClick = {
+                        viewModel.logActivity("Export", "Exported $activeTab Report successfully.")
+                    },
+                    modifier = Modifier.height(34.dp).testTag("export_btn")
+                ) {
+                    Icon(imageVector = Icons.Default.Download, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.White)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(AppStrings.exportReport(lang), fontSize = 10.sp)
+                }
             }
         }
 
@@ -4310,6 +4432,375 @@ fun ReportsScreen(viewModel: AppViewModel, lang: Lang) {
                                         )
                                     }
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+
+            "Referrals & Staff" -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Card 0: Staff Referral Leaderboard
+                    Card(
+                        modifier = Modifier.fillMaxWidth().testTag("staff_leaderboard_card"),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.08f)
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Star,
+                                        contentDescription = null,
+                                        tint = Color(0xFFEAB308), // Gold
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = if (lang == Lang.EN) "Staff Referral Leaderboard" else "સ્ટાફ રેફરલ લીડરબોર્ડ",
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = if (lang == Lang.EN) "RANKINGS" else "રેન્કિંગ્સ",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    )
+                                }
+                            }
+
+                            Text(
+                                text = if (lang == Lang.EN)
+                                    "A real-time overview of our top-performing staff and admins based on the total active customer accounts they referred to the CRM."
+                                    else "ગ્રાહકોને CRM માં લાવવાના આધારે આપણા સ્ટાફ સભ્યો અને એડમિન્સનું રીઅલ-ટાઇમ પ્રદર્શન પત્રક.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            // Leaderboard entries computation
+                            val leaderboardEntries = remember(staffList, customerReferrals) {
+                                val allStaffNames = (
+                                    staffList.map { it.name } + 
+                                    customerReferrals.filter { it.referredByType.equals("Staff", ignoreCase = true) || it.referredByType.equals("Owner", ignoreCase = true) }.map { it.referrerName } +
+                                    listOf("Rais Memon (Owner)", "Rais Memon")
+                                ).distinct().filter { it.isNotEmpty() && !it.equals("Direct", ignoreCase = true) }
+
+                                allStaffNames.map { name ->
+                                    val count = customerReferrals.count { 
+                                        (it.referredByType.equals("Staff", ignoreCase = true) || it.referredByType.equals("Owner", ignoreCase = true)) && 
+                                        it.referrerName.equals(name, ignoreCase = true)
+                                    }
+                                    name to count
+                                }.sortedByDescending { it.second }
+                            }
+
+                            if (leaderboardEntries.isEmpty() || leaderboardEntries.all { it.second == 0 }) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = if (lang == Lang.EN) "No staff referral entries found yet." else "હજી સુધી કોઈ સ્ટાફ રેફરલ એન્ટ્રી મળી નથી.",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            } else {
+                                val maxReferrals = leaderboardEntries.maxOf { it.second }.toFloat().coerceAtLeast(1f)
+                                
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    leaderboardEntries.take(10).forEachIndexed { index, (name, count) ->
+                                        val rank = index + 1
+                                        val rankColor = when (rank) {
+                                            1 -> Color(0xFFEAB308) // Gold
+                                            2 -> Color(0xFF94A3B8) // Silver
+                                            3 -> Color(0xFFCD7F32) // Bronze
+                                            else -> MaterialTheme.colorScheme.outline
+                                        }
+
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(
+                                                    if (rank <= 3) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                                                    else Color.Transparent
+                                                )
+                                                .padding(8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            // Rank Badge
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(28.dp)
+                                                    .clip(CircleShape)
+                                                    .background(rankColor)
+                                                    .padding(2.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = "$rank",
+                                                    style = MaterialTheme.typography.labelMedium.copy(
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = if (rank <= 3) Color.White else MaterialTheme.colorScheme.onSurface
+                                                    )
+                                                )
+                                            }
+
+                                            Spacer(modifier = Modifier.width(12.dp))
+
+                                            // Name and progress bar
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = name,
+                                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                                // Relative Linear Progress Indicator
+                                                val progress = count / maxReferrals
+                                                LinearProgressIndicator(
+                                                    progress = progress,
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .height(6.dp)
+                                                        .clip(RoundedCornerShape(3.dp)),
+                                                    color = if (rank == 1) Color(0xFFEAB308) else MaterialTheme.colorScheme.primary,
+                                                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                                                )
+                                            }
+
+                                            Spacer(modifier = Modifier.width(16.dp))
+
+                                            // Count Badge
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(12.dp))
+                                                    .background(MaterialTheme.colorScheme.primaryContainer)
+                                                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                                            ) {
+                                                Text(
+                                                    text = if (lang == Lang.EN) "$count Refs" else "$count રેફરલ્સ",
+                                                    style = MaterialTheme.typography.labelMedium.copy(
+                                                        fontWeight = FontWeight.Black,
+                                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                                    )
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Card 1: Staff Member referred customers report
+                    Card(
+                        modifier = Modifier.fillMaxWidth().testTag("staff_referred_card"),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.People,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = if (lang == Lang.EN) "Staff Referral Excel Reports" else "સ્ટાફ રેફરલ એક્સેલ રિપોર્ટ્સ",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+
+                            Text(
+                                text = if (lang == Lang.EN)
+                                    "Select any staff member or owner admin below to export an Excel sheet listing all customers registered as their referrals."
+                                    else "કોઈપણ સ્ટાફ સભ્ય અથવા ઓનર એડમિન પસંદ કરો અને તેમના દ્વારા લાવવામાં આવેલા ગ્રાહકોની વિગતવાર યાદી એક્સેલ ફાઈલ રૂપે એક્સપોર્ટ કરો.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            Text(
+                                text = if (lang == Lang.EN) "Choose Staff/Owner:" else "સ્ટાફ/ઓનર પસંદ કરો:",
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold)
+                            )
+
+                            val staffOptions = remember(staffList) { 
+                                listOf("All Staff", "Rais Memon (Owner)") + staffList.map { it.name }
+                            }
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                staffOptions.distinct().forEach { sName ->
+                                    val isSelected = selectedStaffName == sName
+                                    FilterChip(
+                                        selected = isSelected,
+                                        onClick = { selectedStaffName = sName },
+                                        label = { Text(sName, fontSize = 11.sp) },
+                                        modifier = Modifier.testTag("staff_chip_$sName")
+                                    )
+                                }
+                            }
+
+                            val matchedReferrals = remember(selectedStaffName, customerReferrals) {
+                                if (selectedStaffName == "All Staff" || selectedStaffName == "બધા સ્ટાફ") {
+                                    customerReferrals.filter { it.referredByType.equals("Staff", ignoreCase = true) || it.referredByType.equals("Owner", ignoreCase = true) }
+                                } else {
+                                    customerReferrals.filter { 
+                                        (it.referredByType.equals("Staff", ignoreCase = true) || it.referredByType.equals("Owner", ignoreCase = true)) && 
+                                        it.referrerName.equals(selectedStaffName, ignoreCase = true)
+                                    }
+                                }
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = if (lang == Lang.EN) 
+                                        "Found: ${matchedReferrals.size} customers" 
+                                        else "મળ્યા: ${matchedReferrals.size} ગ્રાહકો",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold)
+                                )
+
+                                Button(
+                                    onClick = {
+                                        exportStaffReferralsToCsv(context, selectedStaffName, customers, customerReferrals, dues)
+                                        viewModel.logActivity("Staff Referrals Export", "Exported referrals report for staff $selectedStaffName to Excel CSV.")
+                                    },
+                                    modifier = Modifier.testTag("export_staff_referrals_btn")
+                                ) {
+                                    Icon(imageVector = Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(if (lang == Lang.EN) "Export CSV" else "નિકાસ CSV", fontSize = 11.sp)
+                                }
+                            }
+                        }
+                    }
+
+                    // Card 2: Referred Customer Outstanding Dues
+                    Card(
+                        modifier = Modifier.fillMaxWidth().testTag("referred_dues_card"),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.AccountBalanceWallet,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = if (lang == Lang.EN) "Referred Customer Total Dues" else "રેફરલ ગ્રાહકોના બાકી હપ્તા",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.secondary
+                                )
+                            }
+
+                            Text(
+                                text = if (lang == Lang.EN)
+                                    "Export a complete master list of all referred customers across all sources (Staff, Owners, External Referrers) with their outstanding/pending dues details."
+                                    else "તમામ સ્રોતો (સ્ટાફ, માલિકો, બાહ્ય સંદર્ભકર્તાઓ) પરના તમામ રેફરલ ગ્રાહકોની તેમના બાકી હપ્તાની વિગતવાર યાદી એક્સેલ નિકાસ કરો.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            // Let's count how many total referrals are waiting/due
+                            val totalReferredDueCount = remember(customerReferrals, customers, dues) {
+                                customerReferrals.count { ref ->
+                                    val cust = customers.find { it.id == ref.customerId }
+                                    cust != null && dues.any { it.customerId == cust.id && it.dueStatus != "Paid" }
+                                }
+                            }
+
+                            val totalReferredPendingAmount = remember(customerReferrals, customers, dues) {
+                                customerReferrals.sumOf { ref ->
+                                    val cust = customers.find { it.id == ref.customerId }
+                                    if (cust != null) {
+                                        dues.filter { it.customerId == cust.id && it.dueStatus != "Paid" }.sumOf { it.dueAmount }
+                                    } else 0.0
+                                }
+                            }
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.25f))
+                                    .padding(8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = if (lang == Lang.EN) "Pending Referral Accounts: $totalReferredDueCount" else "બાકી ખાતા: $totalReferredDueCount",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold)
+                                )
+                                Text(
+                                    text = "Total Due: ₹${totalReferredPendingAmount.toInt()}",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold, color = StatusColors.Overdue)
+                                )
+                            }
+
+                            Button(
+                                onClick = {
+                                    exportReferralsDueToCsv(context, customers, customerReferrals, dues)
+                                    viewModel.logActivity("Referred Dues Export", "Exported referred customer outstanding dues report successfully.")
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                                modifier = Modifier.fillMaxWidth().testTag("export_referred_dues_btn")
+                            ) {
+                                Icon(imageVector = Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (lang == Lang.EN) "Export Referred Dues Excel (CSV)" else "રેફરલ બાકી પત્રક એક્સેલ નિકાસ (CSV)",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
                             }
                         }
                     }
