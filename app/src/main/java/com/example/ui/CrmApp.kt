@@ -1566,6 +1566,7 @@ fun DashboardScreen(viewModel: AppViewModel, lang: Lang) {
     // Modal forms / Dialog rendering for Dash activities
     if (showAddCustomerDialogFromDash) {
         AddCustomerDialog(
+            viewModel = viewModel,
             lang = lang,
             onDismiss = { showAddCustomerDialogFromDash = false },
             onSave = { name, mob, altM, addr, city, prod, price, pending, notes, refType, refName, invoiceNo, modelDet, dueDays ->
@@ -1902,6 +1903,7 @@ fun CustomersScreen(viewModel: AppViewModel, lang: Lang) {
     // Modal dialog to Add Customer
     if (showAddDialog) {
         AddCustomerDialog(
+            viewModel = viewModel,
             lang = lang,
             onDismiss = { showAddDialog = false },
             onSave = { name, mob, altM, addr, city, prod, price, pending, notes, refType, refName, invoiceNo, modelDet, dueDays ->
@@ -2212,6 +2214,7 @@ fun Icon(imageVector: ImageVector, contentDescription: String?, size: androidx.c
 // Dialog Component for adding new Customer
 @Composable
 fun AddCustomerDialog(
+    viewModel: AppViewModel,
     lang: Lang,
     onDismiss: () -> Unit,
     onSave: (name: String, mob: String, altM: String, addr: String, city: String, prod: String, price: Double, pending: Double, notes: String, refType: String, refName: String, invoiceNo: String, modelDet: String, dueDays: Int) -> Unit
@@ -2346,19 +2349,117 @@ fun AddCustomerDialog(
                     types.forEach { type ->
                         FilterChip(
                             selected = refType == type,
-                            onClick = { refType = type },
+                            onClick = { 
+                                refType = type 
+                                refName = when (type) {
+                                    "Owner" -> "Rais Memon (Owner)"
+                                    else -> ""
+                                }
+                            },
                             label = { Text(type, fontSize = 11.sp) }
                         )
                     }
                 }
 
                 if (refType != "Direct") {
-                    OutlinedTextField(
-                        value = refName,
-                        onValueChange = { refName = it },
-                        label = { Text(AppStrings.referrerName(lang)) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    var dropdownExpanded by remember { mutableStateOf(false) }
+                    val staffList by viewModel.staffMemberList.collectAsState()
+                    val referralPersons by viewModel.referralPersonsList.collectAsState()
+                    val customersList by viewModel.customersList.collectAsState()
+
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedTextField(
+                            value = refName,
+                            onValueChange = { refName = it },
+                            label = { 
+                                val labelText = when (refType) {
+                                    "Owner" -> if (lang == Lang.EN) "Owner Name" else "માલિકનું નામ"
+                                    "Staff" -> if (lang == Lang.EN) "Select Staff Member" else "સ્ટાફ નક્કી કરો"
+                                    "Existing Customer" -> if (lang == Lang.EN) "Select Existing Customer" else "ચાલુ ગ્રાહક નક્કી કરો"
+                                    "External Person" -> if (lang == Lang.EN) "Select External Referrer" else "બહારના રેફરર નક્કી કરો"
+                                    else -> AppStrings.referrerName(lang)
+                                }
+                                Text(labelText)
+                            },
+                            readOnly = (refType == "Owner"),
+                            trailingIcon = {
+                                if (refType != "Owner") {
+                                    IconButton(onClick = { dropdownExpanded = true }) {
+                                        Icon(
+                                            imageVector = Icons.Default.ArrowDropDown,
+                                            contentDescription = "Expand Options"
+                                        )
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().clickable(enabled = refType != "Owner") {
+                                dropdownExpanded = true
+                            }
+                        )
+
+                        DropdownMenu(
+                            expanded = dropdownExpanded,
+                            onDismissRequest = { dropdownExpanded = false },
+                            modifier = Modifier.fillMaxWidth(0.85f)
+                        ) {
+                            when (refType) {
+                                "Staff" -> {
+                                    if (staffList.isEmpty()) {
+                                        DropdownMenuItem(
+                                            text = { Text(if (lang == Lang.EN) "No staff members found" else "કોઈ સ્ટાફ સભ્યો નથી") },
+                                            onClick = { dropdownExpanded = false }
+                                        )
+                                    } else {
+                                        staffList.forEach { staff ->
+                                            DropdownMenuItem(
+                                                text = { Text(staff.name) },
+                                                onClick = {
+                                                    refName = staff.name
+                                                    dropdownExpanded = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                                "Existing Customer" -> {
+                                    if (customersList.isEmpty()) {
+                                        DropdownMenuItem(
+                                            text = { Text(if (lang == Lang.EN) "No existing customers found" else "કોઈ ગ્રાહકો મળ્યા નથી") },
+                                            onClick = { dropdownExpanded = false }
+                                        )
+                                    } else {
+                                        customersList.forEach { cust ->
+                                            DropdownMenuItem(
+                                                text = { Text("${cust.customerName} (${cust.mobileNumber})") },
+                                                onClick = {
+                                                    refName = cust.customerName
+                                                    dropdownExpanded = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                                "External Person" -> {
+                                    if (referralPersons.isEmpty()) {
+                                        DropdownMenuItem(
+                                            text = { Text(if (lang == Lang.EN) "No external referrers found" else "બાહ્ય રેફરર મળ્યા નથી") },
+                                            onClick = { dropdownExpanded = false }
+                                        )
+                                    } else {
+                                        referralPersons.forEach { refPerson ->
+                                            DropdownMenuItem(
+                                                text = { Text("${refPerson.fullName} (${refPerson.city})") },
+                                                onClick = {
+                                                    refName = refPerson.fullName
+                                                    dropdownExpanded = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
 
                 OutlinedTextField(
