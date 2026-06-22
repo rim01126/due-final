@@ -1144,6 +1144,63 @@ fun DashboardScreen(viewModel: AppViewModel, lang: Lang) {
             }
         }
 
+        // Developer Demo Tools: Batch seed 50 different entries
+        Card(
+            modifier = Modifier.fillMaxWidth().testTag("dev_seeder_card"),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
+            ),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (lang == Lang.EN) "DEVELOPER TESTING SEEDER" else "ડેવલપર ટેસ્ટિંગ સીડર",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = if (lang == Lang.EN) "Instantly seed 50 unique diverse customers" else "તરત જ ૫૦ અજોડ ગ્રાહકોની એન્ટ્રી ભરો",
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(
+                    onClick = {
+                        viewModel.seed50RandomCustomers()
+                        android.widget.Toast.makeText(context, "Successfully queued seeding of 50 diverse customer entries!", android.widget.Toast.LENGTH_LONG).show()
+                    },
+                    modifier = Modifier.testTag("seed_50_customers_button"),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Download,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = if (lang == Lang.EN) "Seed 50" else "૫૦ ભરો",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
         // Overdue & Recovery Performance Bar Graph (Strict Tailwind High Density Spec)
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -2054,7 +2111,7 @@ fun AddCustomerDialog(
     var billText by remember { mutableStateOf("") }
     var pendingText by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
-    var dueDays by remember { mutableStateOf(30) }
+    var dueDaysInput by remember { mutableStateOf("30") }
     
     // Referral Selection
     var refType by remember { mutableStateOf("Direct") }
@@ -2147,28 +2204,13 @@ fun AddCustomerDialog(
                 }
 
                 if ((pendingText.toDoubleOrNull() ?: 0.0) > 0.0) {
-                    Text(
-                        text = if (lang == Lang.EN) "Initial Installment Due Period" else "પ્રથમ હપ્તાની નિયત મુદત",
-                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    OutlinedTextField(
+                        value = dueDaysInput,
+                        onValueChange = { dueDaysInput = it },
+                        label = { Text(if (lang == Lang.EN) "Initial Installment Due Period (Days)" else "પ્રથમ હપ્તાની નિયત મુદત (દિવસો)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth().testTag("due_days_field")
                     )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        FilterChip(
-                            selected = dueDays == 30,
-                            onClick = { dueDays = 30 },
-                            label = { Text(if (lang == Lang.EN) "Standard (30 Days)" else "સામાન્ય (૩૦ દિવસ)") },
-                            modifier = Modifier.weight(1f).testTag("due_30_days_chip")
-                        )
-                        FilterChip(
-                            selected = dueDays == 6,
-                            onClick = { dueDays = 6 },
-                            label = { Text(if (lang == Lang.EN) "Pay after 6 Days" else "૬ દિવસ પછી ચૂકવશે") },
-                            modifier = Modifier.weight(1f).testTag("due_6_days_chip")
-                        )
-                    }
                 }
 
                 OutlinedTextField(
@@ -2227,7 +2269,7 @@ fun AddCustomerDialog(
                                     billText.toDoubleOrNull() ?: 0.0,
                                     pendingText.toDoubleOrNull() ?: 0.0,
                                     notes, refType, refName, invoiceNumber, modelDetail,
-                                    dueDays
+                                    dueDaysInput.toIntOrNull() ?: 30
                                 )
                             }
                         },

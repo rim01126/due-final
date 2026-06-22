@@ -268,7 +268,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     dueDate = dateStr,
                     reminderDate = dateStr,
                     dueStatus = "Pending",
-                    notes = if (dueDays == 6) "Pay after 6 days promise" else "Direct auto installments",
+                    notes = if (dueDays != 30) "Pay after $dueDays days promise" else "Direct auto installments",
                     invoiceNumber = invoiceNumber
                 )
                 repository.addDue(due, staffNameState.value)
@@ -288,6 +288,133 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             if (selectedCustomerIdState.value == customer.id) {
                 selectedCustomerIdState.value = null
             }
+        }
+    }
+
+    private fun calculateDaysPassedLocal(dateString: String): Long {
+        return try {
+            val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+            val date = sdf.parse(dateString) ?: return 0L
+            val currentDate = sdf.parse(sdf.format(java.util.Date())) ?: return 0L
+            val diff = currentDate.time - date.time
+            diff / (24 * 60 * 60 * 1000)
+        } catch (e: Exception) {
+            0L
+        }
+    }
+
+    fun seed50RandomCustomers() {
+        viewModelScope.launch {
+            val names = listOf(
+                "Arvind Kejriwal", "Girish Savalia", "Mansukh Kakadiya", "Rajesh Vora", "Hasmukh Patel",
+                "Kishor Ghetiya", "Bhupat Bhayani", "Lalit Vasoya", "Hardik Patel", "Ramesh Chothani",
+                "Dinesh Tilva", "Sanjay Sorathiya", "Alpesh Kathiriya", "Gopal Italia", "Paresh Dhanani",
+                "Vijay Rupani", "Anandiben Patel", "Keshubhai Patel", "Suresh Modi", "Narendra Makwana",
+                "Mansukh Mandaviya", "Parshottam Rupala", "Kanu Bhalala", "Jitu Vaghani", "Harsh Sanghavi",
+                "Cheteshwar Pujara", "Ravindra Jadeja", "Axar Patel", "Jasprit Bumrah", "Keval Kakadiya",
+                "Jenish Vekaria", "Vipul Radadiya", "Vitthal Radadiya", "Jayesh Radadiya", "Lalit Kagathra",
+                "Pravin Togadia", "Nalin Kotadiya", "Dhiru Gajera", "Siddharth Randeria", "Malhar Thakar",
+                "Manan Desai", "Kirtidan Gadhvi", "Geeta Rabari", "Kinjal Dave", "Osman Mir",
+                "Farida Mir", "Devraj Gadhvi", "Rajbha Gadhvi", "Arvind Vegda", "Mayur Patel"
+            )
+
+            val cities = listOf(
+                "Rajkot", "Surat", "Ahmedabad", "Vadodara", "Jamnagar", "Bhavnagar", "Morbi", "Gondal", 
+                "Junagadh", "Bhuj", "Jasdan", "Jetpur", "Anand", "Nadiad", "Mehsana", "Amreli"
+            )
+
+            val products = listOf(
+                Pair("iPhone 15 Pro", "256GB Black Titanium"),
+                Pair("Samsung S24 Ultra", "512GB Titanium Yellow"),
+                Pair("OnePlus 12", "512GB Flowy Emerald"),
+                Pair("iPhone 15", "128GB Blue Matte"),
+                Pair("Vivo V30 Pro", "256GB Classic Black"),
+                Pair("Samsung A55 5G", "128GB Awesome Iceblue"),
+                Pair("OnePlus Nord CE4", "128GB Dark Chrome"),
+                Pair("Oppo Reno 11 Pro", "256GB Wave Green"),
+                Pair("Xiaomi 14", "512GB Jade Green"),
+                Pair("Google Pixel 8 Pro", "256GB Bay Blue")
+            )
+
+            val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+            
+            for (i in 0 until 50) {
+                val name = names[i % names.size]
+                val city = cities[i % cities.size]
+                val prodPair = products[i % products.size]
+                val mob = "9${(10000000 + i * 1793) % 99999999}"
+                
+                // Varying purchase date from 3 to 220 days ago
+                val cal = java.util.Calendar.getInstance()
+                val daysAgo = 3 + (i * 4) // Spreads from 3 to 200+ days ago
+                cal.add(java.util.Calendar.DAY_OF_YEAR, -daysAgo)
+                val purchaseDateStr = sdf.format(cal.time)
+                
+                // Varied bill amount and outstanding pending
+                val isPaid = (i % 5 == 0) // Every 5th customer has paid fully
+                val billAmount = 40000.0 + (i * 1500)
+                val pendingAmount = if (isPaid) 0.0 else (billAmount * 0.3)
+                
+                val status = when {
+                    isPaid -> "Paid"
+                    daysAgo > 90 -> "Critical"
+                    daysAgo > 35 -> "Overdue"
+                    else -> "Pending"
+                }
+
+                val notes = "Auto-seeded demo record ${i + 1}. Ordered from applet simulator."
+
+                val customer = Customer(
+                    customerName = name,
+                    mobileNumber = mob,
+                    alternateMobileNumber = "99099" + (10000 + i),
+                    address = "Applet Street Block ${i + 1}",
+                    cityVillage = city,
+                    productPurchased = prodPair.first,
+                    purchaseDate = purchaseDateStr,
+                    totalBillAmount = billAmount,
+                    pendingAmount = pendingAmount,
+                    notes = notes,
+                    status = status,
+                    invoiceNumber = "INV-" + (1000 + i),
+                    modelDetail = prodPair.second
+                )
+
+                val custId = repository.addCustomer(
+                    customer = customer,
+                    referredByType = "Direct",
+                    referrerName = "",
+                    staffName = staffNameState.value
+                )
+
+                if (pendingAmount > 0.0) {
+                    // Due date is purchase date + 30 days
+                    val dueCal = java.util.Calendar.getInstance()
+                    dueCal.time = cal.time
+                    dueCal.add(java.util.Calendar.DAY_OF_YEAR, 30)
+                    val dueDateStr = sdf.format(dueCal.time)
+                    
+                    val parsedDays = calculateDaysPassedLocal(dueDateStr)
+                    val dueStatus = when {
+                        parsedDays >= 60 -> "Critical"
+                        parsedDays > 0 -> "Overdue"
+                        else -> "Pending"
+                    }
+
+                    val due = Due(
+                        customerId = custId,
+                        customerName = name,
+                        dueAmount = pendingAmount,
+                        dueDate = dueDateStr,
+                        reminderDate = dueDateStr,
+                        dueStatus = dueStatus,
+                        notes = "Seed Due for installment ${i + 1}",
+                        invoiceNumber = "INV-" + (1000 + i)
+                    )
+                    repository.addDue(due, staffNameState.value)
+                }
+            }
+            logActivity("System", "Bulk seeding of 50 diverse test customers completed successfully.")
         }
     }
 
