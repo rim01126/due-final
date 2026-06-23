@@ -38,6 +38,8 @@ create table if not exists public.customers (
     pending_amount numeric(12,2) not null check (pending_amount >= 0),
     notes text,
     status text not null check (status in ('Active', 'Paid', 'Pending', 'Overdue', 'Critical')),
+    invoice_number text default '',
+    model_detail text default '',
     created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 

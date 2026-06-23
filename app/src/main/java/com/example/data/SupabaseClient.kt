@@ -139,7 +139,11 @@ interface SupabaseRestService {
     suspend fun getCustomers(): List<CustomerDto>
 
     @POST("customers")
-    suspend fun upsertCustomer(@Header("Prefer") prefer: String = "resolution=merge-duplicates", @Body body: List<CustomerDto>): List<CustomerDto>
+    suspend fun upsertCustomer(
+        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
+        @Query("on_conflict") onConflict: String = "id",
+        @Body body: List<CustomerDto>
+    ): List<CustomerDto>
 
     @DELETE("customers")
     suspend fun deleteCustomer(@Query("id") filter: String)
@@ -148,7 +152,11 @@ interface SupabaseRestService {
     suspend fun getDues(): List<DueDto>
 
     @POST("dues")
-    suspend fun upsertDue(@Header("Prefer") prefer: String = "resolution=merge-duplicates", @Body body: List<DueDto>): List<DueDto>
+    suspend fun upsertDue(
+        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
+        @Query("on_conflict") onConflict: String = "id",
+        @Body body: List<DueDto>
+    ): List<DueDto>
 
     @DELETE("dues")
     suspend fun deleteDue(@Query("id") filter: String)
@@ -157,7 +165,11 @@ interface SupabaseRestService {
     suspend fun getPaymentEntries(): List<PaymentEntryDto>
 
     @POST("payment_entries")
-    suspend fun upsertPaymentEntry(@Header("Prefer") prefer: String = "resolution=merge-duplicates", @Body body: List<PaymentEntryDto>): List<PaymentEntryDto>
+    suspend fun upsertPaymentEntry(
+        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
+        @Query("on_conflict") onConflict: String = "id",
+        @Body body: List<PaymentEntryDto>
+    ): List<PaymentEntryDto>
 
     @DELETE("payment_entries")
     suspend fun deletePaymentEntry(@Query("id") filter: String)
@@ -166,7 +178,11 @@ interface SupabaseRestService {
     suspend fun getPaymentFollowups(): List<PaymentFollowupDto>
 
     @POST("payment_followups")
-    suspend fun upsertPaymentFollowup(@Header("Prefer") prefer: String = "resolution=merge-duplicates", @Body body: List<PaymentFollowupDto>): List<PaymentFollowupDto>
+    suspend fun upsertPaymentFollowup(
+        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
+        @Query("on_conflict") onConflict: String = "id",
+        @Body body: List<PaymentFollowupDto>
+    ): List<PaymentFollowupDto>
 
     @DELETE("payment_followups")
     suspend fun deletePaymentFollowup(@Query("id") filter: String)
@@ -175,7 +191,11 @@ interface SupabaseRestService {
     suspend fun getReferralPersons(): List<ReferralPersonDto>
 
     @POST("referral_persons")
-    suspend fun upsertReferralPerson(@Header("Prefer") prefer: String = "resolution=merge-duplicates", @Body body: List<ReferralPersonDto>): List<ReferralPersonDto>
+    suspend fun upsertReferralPerson(
+        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
+        @Query("on_conflict") onConflict: String = "id",
+        @Body body: List<ReferralPersonDto>
+    ): List<ReferralPersonDto>
 
     @DELETE("referral_persons")
     suspend fun deleteReferralPerson(@Query("id") filter: String)
@@ -184,13 +204,21 @@ interface SupabaseRestService {
     suspend fun getCustomerReferrals(): List<CustomerReferralDto>
 
     @POST("customer_referrals")
-    suspend fun upsertCustomerReferral(@Header("Prefer") prefer: String = "resolution=merge-duplicates", @Body body: List<CustomerReferralDto>): List<CustomerReferralDto>
+    suspend fun upsertCustomerReferral(
+        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
+        @Query("on_conflict") onConflict: String = "id",
+        @Body body: List<CustomerReferralDto>
+    ): List<CustomerReferralDto>
 
     @GET("staff_members")
     suspend fun getStaffMembers(): List<StaffMemberDto>
 
     @POST("staff_members")
-    suspend fun upsertStaffMember(@Header("Prefer") prefer: String = "resolution=merge-duplicates", @Body body: List<StaffMemberDto>): List<StaffMemberDto>
+    suspend fun upsertStaffMember(
+        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
+        @Query("on_conflict") onConflict: String = "id",
+        @Body body: List<StaffMemberDto>
+    ): List<StaffMemberDto>
 
     @DELETE("staff_members")
     suspend fun deleteStaffMember(@Query("id") filter: String)
@@ -199,19 +227,31 @@ interface SupabaseRestService {
     suspend fun getWhatsAppReminderLogs(): List<WhatsAppReminderLogDto>
 
     @POST("whatsapp_reminder_logs")
-    suspend fun upsertWhatsAppReminderLog(@Header("Prefer") prefer: String = "resolution=merge-duplicates", @Body body: List<WhatsAppReminderLogDto>): List<WhatsAppReminderLogDto>
+    suspend fun upsertWhatsAppReminderLog(
+        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
+        @Query("on_conflict") onConflict: String = "id",
+        @Body body: List<WhatsAppReminderLogDto>
+    ): List<WhatsAppReminderLogDto>
 
     @GET("message_templates")
     suspend fun getMessageTemplates(): List<MessageTemplateDto>
 
     @POST("message_templates")
-    suspend fun upsertMessageTemplate(@Header("Prefer") prefer: String = "resolution=merge-duplicates", @Body body: List<MessageTemplateDto>): List<MessageTemplateDto>
+    suspend fun upsertMessageTemplate(
+        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
+        @Query("on_conflict") onConflict: String = "id",
+        @Body body: List<MessageTemplateDto>
+    ): List<MessageTemplateDto>
 
     @GET("activity_logs")
     suspend fun getActivityLogs(): List<ActivityLogDto>
 
     @POST("activity_logs")
-    suspend fun upsertActivityLog(@Header("Prefer") prefer: String = "resolution=merge-duplicates", @Body body: List<ActivityLogDto>): List<ActivityLogDto>
+    suspend fun upsertActivityLog(
+        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
+        @Query("on_conflict") onConflict: String = "id",
+        @Body body: List<ActivityLogDto>
+    ): List<ActivityLogDto>
 }
 
 // ==========================================
