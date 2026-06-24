@@ -5,6 +5,7 @@ import com.example.BuildConfig
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 import com.squareup.moshi.Moshi
+import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -321,6 +322,7 @@ object SupabaseClient {
                     .build()
 
                 val moshi = Moshi.Builder()
+                    .add(AlwaysSerializeNullsFactory())
                     .add(KotlinJsonAdapterFactory())
                     .build()
 
@@ -338,6 +340,17 @@ object SupabaseClient {
                 null
             }
         }
+    }
+}
+
+class AlwaysSerializeNullsFactory : JsonAdapter.Factory {
+    override fun create(
+        type: java.lang.reflect.Type,
+        annotations: Set<Annotation>,
+        moshi: Moshi
+    ): JsonAdapter<*>? {
+        val delegate = moshi.nextAdapter<Any>(this, type, annotations)
+        return delegate.serializeNulls()
     }
 }
 
