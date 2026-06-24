@@ -93,3 +93,33 @@ To trigger reminders silently from the web dashboard or cloud functions:
      ```
 4. **Deploy static builds**:
    - Upload the static distribution folder (`dist/`) directly to static hosting platforms such as **Vercel**, **Netlify**, or **Supabase Hosting**!
+
+---
+
+## SECTION 5: TROUBLESHOOTING SYNC PERMISSION ERRORS (RLS / 42501)
+
+If you see errors like:
+* `"new row violates row-level security policy..."` (Code `42501`)
+* Sync fails during data push/pull
+
+This means the database has **Row-Level Security (RLS)** active, but your mobile application is running with unauthenticated client access (using the public anon key).
+
+### To Fix This Instantly (Recommended for Development/Testing):
+Go to your **Supabase Dashboard** -> **SQL Editor** -> click **New Query**, paste the following script, and click **Run**:
+
+```sql
+-- Disable Row Level Security to allow unauthenticated app synchronization
+alter table public.users_profile disable row level security;
+alter table public.staff_members disable row level security;
+alter table public.customers disable row level security;
+alter table public.dues disable row level security;
+alter table public.payment_entries disable row level security;
+alter table public.payment_followups disable row level security;
+alter table public.referral_persons disable row level security;
+alter table public.customer_referrals disable row level security;
+alter table public.whatsapp_reminder_logs disable row level security;
+alter table public.activity_logs disable row level security;
+alter table public.message_templates disable row level security;
+```
+
+This instantly opens up the tables for client-side direct sync, resolving all database access failures.
