@@ -1144,62 +1144,7 @@ fun DashboardScreen(viewModel: AppViewModel, lang: Lang) {
             }
         }
 
-        // Developer Demo Tools: Batch seed 50 different entries
-        Card(
-            modifier = Modifier.fillMaxWidth().testTag("dev_seeder_card"),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
-            ),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = if (lang == Lang.EN) "DEVELOPER TESTING SEEDER" else "ડેવલપર ટેસ્ટિંગ સીડર",
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black),
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = if (lang == Lang.EN) "Instantly seed 50 unique diverse customers" else "તરત જ ૫૦ અજોડ ગ્રાહકોની એન્ટ્રી ભરો",
-                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Button(
-                    onClick = {
-                        viewModel.seed50RandomCustomers()
-                        android.widget.Toast.makeText(context, "Successfully queued seeding of 50 diverse customer entries!", android.widget.Toast.LENGTH_LONG).show()
-                    },
-                    modifier = Modifier.testTag("seed_50_customers_button"),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Download,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = if (lang == Lang.EN) "Seed 50" else "૫૦ ભરો",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
+
 
         // Overdue & Recovery Performance Bar Graph (Strict Tailwind High Density Spec)
         Card(

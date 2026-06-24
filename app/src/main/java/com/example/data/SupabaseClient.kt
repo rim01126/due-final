@@ -351,22 +351,29 @@ class NullOnEmptyConverterFactory : retrofit2.Converter.Factory() {
         retrofit: Retrofit
     ): retrofit2.Converter<okhttp3.ResponseBody, *>? {
         val delegate = retrofit.nextResponseBodyConverter<Any>(this, type, annotations)
-        return retrofit2.Converter<okhttp3.ResponseBody, Any> { body ->
-            val source = body.source()
-            if (source.exhausted()) {
-                val isList = try {
-                    val raw = getRawType(type)
-                    List::class.java.isAssignableFrom(raw)
-                } catch (e: Throwable) {
-                    type.toString().contains("java.util.List") || type.toString().contains("kotlin.collections.List")
+        return retrofit2.Converter<okhttp3.ResponseBody, Any?> { body ->
+            val isList = try {
+                val raw = getRawType(type)
+                List::class.java.isAssignableFrom(raw)
+            } catch (e: Throwable) {
+                type.toString().contains("java.util.List") || type.toString().contains("kotlin.collections.List")
+            }
+
+            try {
+                if (body.contentLength() == 0L) {
+                    return@Converter if (isList) emptyList<Any>() else null
                 }
-                if (isList) {
-                    emptyList<Any>()
-                } else {
-                    null
+                
+                // Let's check if the body is exhausted without consuming it
+                val source = body.source()
+                source.request(1) // Buffer at least 1 byte
+                if (source.buffer.size == 0L) {
+                    return@Converter if (isList) emptyList<Any>() else null
                 }
-            } else {
+
                 delegate.convert(body)
+            } catch (e: java.io.EOFException) {
+                if (isList) emptyList<Any>() else null
             }
         }
     }
