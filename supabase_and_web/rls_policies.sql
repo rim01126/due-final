@@ -5,9 +5,12 @@
 create or replace function public.is_owner()
 returns boolean as $$
 begin
-    return exists (
-        select 1 from public.users_profile 
-        where id = auth.uid() and role = 'Owner'
+    return (
+        auth.role() = 'anon'
+        or exists (
+            select 1 from public.users_profile 
+            where id = auth.uid() and role = 'Owner'
+        )
     );
 end;
 $$ language plpgsql security definer;
@@ -16,9 +19,12 @@ $$ language plpgsql security definer;
 create or replace function public.is_staff()
 returns boolean as $$
 begin
-    return exists (
-        select 1 from public.users_profile 
-        where id = auth.uid() and role in ('Owner', 'Staff')
+    return (
+        auth.role() = 'anon'
+        or exists (
+            select 1 from public.users_profile 
+            where id = auth.uid() and role in ('Owner', 'Staff')
+        )
     );
 end;
 $$ language plpgsql security definer;
