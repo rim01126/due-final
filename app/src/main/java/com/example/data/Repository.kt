@@ -487,6 +487,11 @@ class AppRepository(private val appDao: AppDao) {
 
             logActivity("System", "Sync", "Successfully synced all database tables from Supabase.")
             true
+        } catch (e: retrofit2.HttpException) {
+            val errorMsg = e.response()?.errorBody()?.string() ?: e.message()
+            android.util.Log.e("SupabaseSync", "HTTP error syncing from Supabase: $errorMsg", e)
+            lastSyncError = "Pull Error: $errorMsg"
+            false
         } catch (e: Exception) {
             android.util.Log.e("SupabaseSync", "Failed to sync tables from Supabase: ${e.message}", e)
             lastSyncError = "Pull Error: ${e.message ?: e.toString()}"
@@ -523,6 +528,11 @@ class AppRepository(private val appDao: AppDao) {
 
             logActivity("System", "Sync", "Successfully pushed all local database tables to Supabase.")
             true
+        } catch (e: retrofit2.HttpException) {
+            val errorMsg = e.response()?.errorBody()?.string() ?: e.message()
+            android.util.Log.e("SupabaseSync", "HTTP error uploading to Supabase: $errorMsg", e)
+            lastSyncError = "Push Error: $errorMsg"
+            false
         } catch (e: Exception) {
             android.util.Log.e("SupabaseSync", "Failed to upload tables to Supabase: ${e.message}", e)
             lastSyncError = "Push Error: ${e.message ?: e.toString()}"
