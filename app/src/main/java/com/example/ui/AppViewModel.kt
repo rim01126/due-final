@@ -47,55 +47,55 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     // Observed Data Lists Live from DB
     val customersList = repository.allCustomers.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.Eagerly,
         initialValue = emptyList()
     )
 
     val duesList = repository.allDues.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.Eagerly,
         initialValue = emptyList()
     )
 
     val paymentsList = repository.allPayments.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.Eagerly,
         initialValue = emptyList()
     )
 
     val followupsList = repository.allFollowups.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.Eagerly,
         initialValue = emptyList()
     )
 
     val referralPersonsList = repository.allReferralPersons.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.Eagerly,
         initialValue = emptyList()
     )
 
     val customerReferralsList = repository.allCustomerReferrals.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.Eagerly,
         initialValue = emptyList()
     )
 
     val staffMemberList = repository.allStaff.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.Eagerly,
         initialValue = emptyList()
     )
 
     val reminderLogsList = repository.allReminderLogs.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.Eagerly,
         initialValue = emptyList()
     )
 
     val activityLogsList = repository.allActivityLogs.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.Eagerly,
         initialValue = emptyList()
     )
 
@@ -172,10 +172,23 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private fun normalizePhoneNumber(phone: String): String {
+        val digitsOnly = phone.filter { it.isDigit() }
+        return if (digitsOnly.length >= 10) {
+            digitsOnly.takeLast(10)
+        } else {
+            digitsOnly
+        }
+    }
+
     // Interactive Owner/Staff authentication credentials
     fun loginWithCredentials(mobile: String, pass: String): Boolean {
+        val inputNorm = normalizePhoneNumber(mobile)
+        val isOwnerHardcoded = (mobile == "owner@phoneworld.com" || mobile == "Owner" || mobile == "Rais Memon" || 
+                inputNorm == "9724493045") && pass == "123456789"
+
         // Owner Check (hardcoded / standard)
-        if ((mobile == "9724493045" || mobile == "owner@phoneworld.com" || mobile == "Owner" || mobile == "Rais Memon") && pass == "123456789") {
+        if (isOwnerHardcoded) {
             currentRoleState.value = "Owner"
             staffNameState.value = "Rais Memon"
             isLoggedInState.value = true
@@ -186,7 +199,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         
         // Dynamic DB staff check
         val matchedStaff = staffMemberList.value.find { 
-            (it.mobile == mobile || it.email == mobile || it.name == mobile) && 
+            val dbNorm = normalizePhoneNumber(it.mobile)
+            val phoneMatch = dbNorm.isNotEmpty() && dbNorm == inputNorm
+            (phoneMatch || it.email.equals(mobile, ignoreCase = true) || it.name.equals(mobile, ignoreCase = true)) && 
             it.password == pass
         }
         

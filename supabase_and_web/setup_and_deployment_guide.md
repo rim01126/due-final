@@ -123,3 +123,31 @@ alter table public.message_templates disable row level security;
 ```
 
 This instantly opens up the tables for client-side direct sync, resolving all database access failures.
+
+---
+
+## SECTION 6: TROUBLESHOOTING SEQUENCE DESYNCHRONIZATION (DUPLICATE KEY ERRORS)
+
+If you see errors like:
+* `"duplicate key value violates unique constraint..."` (e.g. `Key (id)=(1) already exists`)
+* Database inserts fail during manual creation of customers, installments, payments, or logs
+
+This occurs because manual insertion of mock data with explicit IDs (like in `test_data.sql`) does not advance PostgreSQL's internal auto-increment sequence generators. When a new record is created without specifying an ID, the sequence returns `1` or another low number that has already been taken.
+
+### To Fix This Instantly:
+Go to your **Supabase Dashboard** -> **SQL Editor** -> click **New Query**, paste the following script, and click **Run**:
+
+```sql
+-- Reset sequences to align with the maximum existing ID for each table
+select setval('public.customers_id_seq', coalesce((select max(id) from public.customers), 1));
+select setval('public.dues_id_seq', coalesce((select max(id) from public.dues), 1));
+select setval('public.payment_entries_id_seq', coalesce((select max(id) from public.payment_entries), 1));
+select setval('public.payment_followups_id_seq', coalesce((select max(id) from public.payment_followups), 1));
+select setval('public.referral_persons_id_seq', coalesce((select max(id) from public.referral_persons), 1));
+select setval('public.customer_referrals_id_seq', coalesce((select max(id) from public.customer_referrals), 1));
+select setval('public.staff_members_id_seq', coalesce((select max(id) from public.staff_members), 1));
+select setval('public.whatsapp_reminder_logs_id_seq', coalesce((select max(id) from public.whatsapp_reminder_logs), 1));
+select setval('public.message_templates_id_seq', coalesce((select max(id) from public.message_templates), 1));
+select setval('public.activity_logs_id_seq', coalesce((select max(id) from public.activity_logs), 1));
+```
+

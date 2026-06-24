@@ -141,7 +141,7 @@ interface SupabaseRestService {
 
     @POST("customers")
     suspend fun upsertCustomer(
-        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
+        @Header("Prefer") prefer: String = "return=representation,resolution=merge-duplicates",
         @Query("on_conflict") onConflict: String = "id",
         @Body body: List<CustomerDto>
     ): List<CustomerDto>
@@ -154,7 +154,7 @@ interface SupabaseRestService {
 
     @POST("dues")
     suspend fun upsertDue(
-        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
+        @Header("Prefer") prefer: String = "return=representation,resolution=merge-duplicates",
         @Query("on_conflict") onConflict: String = "id",
         @Body body: List<DueDto>
     ): List<DueDto>
@@ -167,7 +167,7 @@ interface SupabaseRestService {
 
     @POST("payment_entries")
     suspend fun upsertPaymentEntry(
-        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
+        @Header("Prefer") prefer: String = "return=representation,resolution=merge-duplicates",
         @Query("on_conflict") onConflict: String = "id",
         @Body body: List<PaymentEntryDto>
     ): List<PaymentEntryDto>
@@ -180,7 +180,7 @@ interface SupabaseRestService {
 
     @POST("payment_followups")
     suspend fun upsertPaymentFollowup(
-        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
+        @Header("Prefer") prefer: String = "return=representation,resolution=merge-duplicates",
         @Query("on_conflict") onConflict: String = "id",
         @Body body: List<PaymentFollowupDto>
     ): List<PaymentFollowupDto>
@@ -193,7 +193,7 @@ interface SupabaseRestService {
 
     @POST("referral_persons")
     suspend fun upsertReferralPerson(
-        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
+        @Header("Prefer") prefer: String = "return=representation,resolution=merge-duplicates",
         @Query("on_conflict") onConflict: String = "id",
         @Body body: List<ReferralPersonDto>
     ): List<ReferralPersonDto>
@@ -206,7 +206,7 @@ interface SupabaseRestService {
 
     @POST("customer_referrals")
     suspend fun upsertCustomerReferral(
-        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
+        @Header("Prefer") prefer: String = "return=representation,resolution=merge-duplicates",
         @Query("on_conflict") onConflict: String = "id",
         @Body body: List<CustomerReferralDto>
     ): List<CustomerReferralDto>
@@ -216,7 +216,7 @@ interface SupabaseRestService {
 
     @POST("staff_members")
     suspend fun upsertStaffMember(
-        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
+        @Header("Prefer") prefer: String = "return=representation,resolution=merge-duplicates",
         @Query("on_conflict") onConflict: String = "id",
         @Body body: List<StaffMemberDto>
     ): List<StaffMemberDto>
@@ -229,7 +229,7 @@ interface SupabaseRestService {
 
     @POST("whatsapp_reminder_logs")
     suspend fun upsertWhatsAppReminderLog(
-        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
+        @Header("Prefer") prefer: String = "return=representation,resolution=merge-duplicates",
         @Query("on_conflict") onConflict: String = "id",
         @Body body: List<WhatsAppReminderLogDto>
     ): List<WhatsAppReminderLogDto>
@@ -239,7 +239,7 @@ interface SupabaseRestService {
 
     @POST("message_templates")
     suspend fun upsertMessageTemplate(
-        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
+        @Header("Prefer") prefer: String = "return=representation,resolution=merge-duplicates",
         @Query("on_conflict") onConflict: String = "id",
         @Body body: List<MessageTemplateDto>
     ): List<MessageTemplateDto>
@@ -249,7 +249,7 @@ interface SupabaseRestService {
 
     @POST("activity_logs")
     suspend fun upsertActivityLog(
-        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
+        @Header("Prefer") prefer: String = "return=representation,resolution=merge-duplicates",
         @Query("on_conflict") onConflict: String = "id",
         @Body body: List<ActivityLogDto>
     ): List<ActivityLogDto>
@@ -332,12 +332,41 @@ object SupabaseClient {
                 Retrofit.Builder()
                     .baseUrl(restUrl)
                     .client(okHttpClient)
+                    .addConverterFactory(NullOnEmptyConverterFactory())
                     .addConverterFactory(MoshiConverterFactory.create(moshi))
                     .build()
                     .create(SupabaseRestService::class.java)
             } catch (e: Exception) {
                 Log.e(TAG, "Error initializing Retrofit client: ${e.message}", e)
                 null
+            }
+        }
+    }
+}
+
+class NullOnEmptyConverterFactory : retrofit2.Converter.Factory() {
+    override fun responseBodyConverter(
+        type: java.lang.reflect.Type,
+        annotations: Array<Annotation>,
+        retrofit: Retrofit
+    ): retrofit2.Converter<okhttp3.ResponseBody, *>? {
+        val delegate = retrofit.nextResponseBodyConverter<Any>(this, type, annotations)
+        return retrofit2.Converter<okhttp3.ResponseBody, Any> { body ->
+            val source = body.source()
+            if (source.exhausted()) {
+                val isList = try {
+                    val raw = getRawType(type)
+                    List::class.java.isAssignableFrom(raw)
+                } catch (e: Throwable) {
+                    type.toString().contains("java.util.List") || type.toString().contains("kotlin.collections.List")
+                }
+                if (isList) {
+                    emptyList<Any>()
+                } else {
+                    null
+                }
+            } else {
+                delegate.convert(body)
             }
         }
     }
