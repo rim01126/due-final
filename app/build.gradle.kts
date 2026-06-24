@@ -1,3 +1,5 @@
+import java.util.Base64
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.compose)
@@ -7,6 +9,20 @@ plugins {
 }
 
 android {
+  // Decode debug.keystore from base64 if it does not exist (useful for local builds)
+  val debugKeystoreFile = file("${rootDir}/debug.keystore")
+  val base64KeystoreFile = file("${rootDir}/debug.keystore.base64")
+  if (!debugKeystoreFile.exists() && base64KeystoreFile.exists()) {
+    try {
+      val base64Text = base64KeystoreFile.readText()
+      val decodedBytes = Base64.getMimeDecoder().decode(base64Text)
+      debugKeystoreFile.writeBytes(decodedBytes)
+      logger.lifecycle("Successfully decoded debug.keystore from base64")
+    } catch (e: Exception) {
+      logger.error("Error decoding debug.keystore: ${e.message}")
+    }
+  }
+
   namespace = "com.example"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
@@ -31,14 +47,31 @@ android {
         keyPassword = System.getenv("KEY_PASSWORD")
       } else {
         // Graceful fallback to debug keystore for cloud builds if the release keystore isn't present
-        storeFile = file("${rootDir}/debug.keystore")
-        storePassword = "android"
-        keyAlias = "androiddebugkey"
-        keyPassword = "android"
+        val fallbackLocal = file("${rootDir}/debug.keystore")
+        val fallbackUserHome = file(System.getProperty("user.home") + "/.android/debug.keystore")
+        if (fallbackLocal.exists()) {
+          storeFile = fallbackLocal
+          storePassword = "android"
+          keyAlias = "androiddebugkey"
+          keyPassword = "android"
+        } else if (fallbackUserHome.exists()) {
+          storeFile = fallbackUserHome
+          storePassword = "android"
+          keyAlias = "androiddebugkey"
+          keyPassword = "android"
+        } else {
+          // If absolutely no keystore file is found, do not crash on validation, use a dummy path
+          storeFile = fallbackLocal
+          storePassword = "android"
+          keyAlias = "androiddebugkey"
+          keyPassword = "android"
+        }
       }
     }
     create("debugConfig") {
-      storeFile = file("${rootDir}/debug.keystore")
+      val localKeystore = file("${rootDir}/debug.keystore")
+      val userHomeKeystore = file(System.getProperty("user.home") + "/.android/debug.keystore")
+      storeFile = if (localKeystore.exists()) localKeystore else if (userHomeKeystore.exists()) userHomeKeystore else localKeystore
       storePassword = "android"
       keyAlias = "androiddebugkey"
       keyPassword = "android"
