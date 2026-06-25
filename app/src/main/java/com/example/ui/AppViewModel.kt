@@ -124,6 +124,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             // Seed database on launch if empty
             repository.seedDatabase()
+            // Remove any leftover developer-seeded data
+            removeDeveloperSeededData()
             // Pull initial sync safely from Supabase if configured
             if (isSupabaseConfigured) {
                 try {
@@ -430,6 +432,27 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
             logActivity("System", "Bulk seeding of 50 diverse test customers completed successfully.")
+        }
+    }
+
+    fun removeDeveloperSeededData() {
+        viewModelScope.launch {
+            try {
+                val list = repository.allCustomers.first()
+                val toDelete = list.filter {
+                    it.notes?.contains("Auto-seeded demo record") == true ||
+                    it.address?.contains("Applet Street") == true ||
+                    it.invoiceNumber?.startsWith("INV-") == true
+                }
+                if (toDelete.isNotEmpty()) {
+                    toDelete.forEach { customer ->
+                        repository.deleteCustomer(customer, "System")
+                    }
+                    logActivity("System", "Bulk Deletion of Developer Seeded Customers completed.")
+                }
+            } catch (e: Exception) {
+                // Ignore errors
+            }
         }
     }
 

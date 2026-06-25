@@ -161,8 +161,19 @@ fun CrmApp(viewModel: AppViewModel) {
 
                     // Supabase Sync Action Button
                     val syncStatus by viewModel.syncStatusState.collectAsState()
+                    val context = LocalContext.current
                     IconButton(
-                        onClick = { showSupabaseInfoDialog = true },
+                        onClick = {
+                            if (currentRole == "Owner") {
+                                showSupabaseInfoDialog = true
+                            } else {
+                                android.widget.Toast.makeText(
+                                    context,
+                                    if (lang == Lang.EN) "Only Owner can access Sync settings" else "ફક્ત માલિક જ સિંક સેટિંગ્સ જોઈ શકે છે",
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        },
                         modifier = Modifier.testTag("supabase_sync_button")
                     ) {
                         val iconTint = when (syncStatus) {

@@ -8,6 +8,10 @@ plugins {
   alias(libs.plugins.secrets)
 }
 
+base {
+  archivesName.set("PhoneWorldCRM-v3.2.1")
+}
+
 android {
   // Decode debug.keystore from base64 if it does not exist (useful for local builds)
   val debugKeystoreFile = file("${rootDir}/debug.keystore")
@@ -89,6 +93,7 @@ android {
       signingConfig = signingConfigs.getByName("debugConfig")
     }
   }
+
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11
