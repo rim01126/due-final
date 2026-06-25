@@ -1,5 +1,7 @@
 package com.example.ui
 
+import androidx.compose.ui.res.painterResource
+import com.example.R
 import androidx.compose.animation.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -33,6 +35,8 @@ import androidx.compose.ui.window.Dialog
 import com.example.data.*
 import java.text.SimpleDateFormat
 import java.util.*
+
+const val APP_VERSION = "3.2.1"
 
 // Dynamic Status Theme Colors (M3 Aligned High Density)
 object StatusColors {
@@ -110,21 +114,21 @@ fun CrmApp(viewModel: AppViewModel) {
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = Icons.Default.PhoneAndroid,
+                            painter = painterResource(id = R.drawable.ic_phone_world_logo),
                             contentDescription = "Logo",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(end = 8.dp)
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(28.dp).padding(end = 6.dp)
                         )
                         Column {
                             Text(
                                 text = "Phone World",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                             Text(
-                                text = if (lang == Lang.EN) "Workspace Status: $currentRole ($staffName)" else "વર્કસ્પેસ: $currentRole ($staffName)",
-                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary),
+                                text = "v$APP_VERSION • $staffName ($currentRole)",
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp, color = MaterialTheme.colorScheme.secondary),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -143,7 +147,7 @@ fun CrmApp(viewModel: AppViewModel) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.AdminPanelSettings,
+                            imageVector = Icons.Default.Shield,
                             contentDescription = "Role Mode",
                             modifier = Modifier.size(16.dp),
                             tint = MaterialTheme.colorScheme.primary
@@ -185,7 +189,7 @@ fun CrmApp(viewModel: AppViewModel) {
                     }
 
                     // English/Gujarati Toggle
-                    TextButton(
+                    IconButton(
                         onClick = {
                             viewModel.languageState.value = if (isGujarati == Lang.EN) Lang.GU else Lang.EN
                         },
@@ -194,15 +198,7 @@ fun CrmApp(viewModel: AppViewModel) {
                         Icon(
                             imageVector = Icons.Default.Language,
                             contentDescription = "Language",
-                            modifier = Modifier.size(16.dp),
                             tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = if (isGujarati == Lang.EN) "ગુજરાતી" else "English",
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            style = MaterialTheme.typography.labelMedium
                         )
                     }
 
@@ -1504,6 +1500,25 @@ fun DashboardScreen(viewModel: AppViewModel, lang: Lang) {
                         }
                     }
                 }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Box(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "Phone World CRM",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                )
+                Text(
+                    text = "Version $APP_VERSION",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                )
             }
         }
     }
@@ -3356,17 +3371,9 @@ fun ReferralsScreen(viewModel: AppViewModel, lang: Lang) {
 
                 VerticalDivider(modifier = Modifier.height(40.dp).padding(horizontal = 8.dp), color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f))
 
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1.2f)) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
                     Text(text = "${referrals.size}", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onPrimaryContainer))
                     Text(text = "Customers Referred", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                }
-
-                VerticalDivider(modifier = Modifier.height(40.dp).padding(horizontal = 8.dp), color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f))
-
-                val rewardEst = referrals.size * 500.0 // Custom mock premium calculations: ₹500 reward point per referral customer
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                    Text(text = "₹${rewardEst.toInt()}", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onPrimaryContainer))
-                    Text(text = AppStrings.rewardPoints(lang), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
