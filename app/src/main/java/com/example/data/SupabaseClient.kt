@@ -456,7 +456,7 @@ fun PaymentEntry.toDto() = PaymentEntryDto(
     id = if (id == 0) null else id,
     customerId = customerId,
     customerName = customerName,
-    dueId = if (dueId == 0) null else dueId,
+    dueId = if (dueId == 0 || dueId == null) null else dueId,
     amountPaid = amountPaid,
     paymentDate = paymentDate,
     paymentMode = paymentMode,
@@ -556,7 +556,7 @@ fun WhatsAppReminderLog.toDto() = WhatsAppReminderLogDto(
     id = if (id == 0) null else id,
     sentDate = sentDate,
     sentBy = sentBy,
-    customerId = if (customerId == 0) null else customerId,
+    customerId = if (customerId == 0 || customerId == null) null else customerId,
     customerName = customerName,
     message = message
 )

@@ -1,6 +1,8 @@
 package com.example.data
 
 import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(tableName = "users_profile")
@@ -31,7 +33,18 @@ data class Customer(
     val createdAt: Long = System.currentTimeMillis()
 )
 
-@Entity(tableName = "dues")
+@Entity(
+    tableName = "dues",
+    foreignKeys = [
+        ForeignKey(
+            entity = Customer::class,
+            parentColumns = ["id"],
+            childColumns = ["customerId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("customerId")]
+)
 data class Due(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val customerId: Int,
@@ -44,12 +57,29 @@ data class Due(
     val invoiceNumber: String = ""
 )
 
-@Entity(tableName = "payment_entries")
+@Entity(
+    tableName = "payment_entries",
+    foreignKeys = [
+        ForeignKey(
+            entity = Customer::class,
+            parentColumns = ["id"],
+            childColumns = ["customerId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = Due::class,
+            parentColumns = ["id"],
+            childColumns = ["dueId"],
+            onDelete = ForeignKey.SET_NULL
+        )
+    ],
+    indices = [Index("customerId"), Index("dueId")]
+)
 data class PaymentEntry(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val customerId: Int,
     val customerName: String,
-    val dueId: Int,
+    val dueId: Int? = null,
     val amountPaid: Double,
     val paymentDate: String, // yyyy-MM-dd
     val paymentMode: String, // "Cash", "UPI", "Card", "Finance", "Other"
@@ -57,7 +87,18 @@ data class PaymentEntry(
     val collectedBy: String // Name or ID of Owner/Staff member
 )
 
-@Entity(tableName = "payment_followups")
+@Entity(
+    tableName = "payment_followups",
+    foreignKeys = [
+        ForeignKey(
+            entity = Customer::class,
+            parentColumns = ["id"],
+            childColumns = ["customerId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("customerId")]
+)
 data class PaymentFollowup(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val customerId: Int,
@@ -80,7 +121,18 @@ data class ReferralPerson(
     val notes: String = ""
 )
 
-@Entity(tableName = "customer_referrals")
+@Entity(
+    tableName = "customer_referrals",
+    foreignKeys = [
+        ForeignKey(
+            entity = Customer::class,
+            parentColumns = ["id"],
+            childColumns = ["customerId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("customerId")]
+)
 data class CustomerReferral(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val customerId: Int,
@@ -101,12 +153,23 @@ data class StaffMember(
     val isActive: Boolean = true
 )
 
-@Entity(tableName = "whatsapp_reminder_logs")
+@Entity(
+    tableName = "whatsapp_reminder_logs",
+    foreignKeys = [
+        ForeignKey(
+            entity = Customer::class,
+            parentColumns = ["id"],
+            childColumns = ["customerId"],
+            onDelete = ForeignKey.SET_NULL
+        )
+    ],
+    indices = [Index("customerId")]
+)
 data class WhatsAppReminderLog(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val sentDate: String, // yyyy-MM-dd HH:mm:ss
     val sentBy: String,
-    val customerId: Int,
+    val customerId: Int? = null,
     val customerName: String,
     val message: String
 )

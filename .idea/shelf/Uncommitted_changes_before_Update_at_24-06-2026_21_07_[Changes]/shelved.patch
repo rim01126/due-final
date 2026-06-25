@@ -1,0 +1,332 @@
+Index: .idea/runConfigurations.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/runConfigurations.xml b/.idea/runConfigurations.xml
+new file mode 100644
+--- /dev/null	(date 1782306989694)
++++ b/.idea/runConfigurations.xml	(date 1782306989694)
+@@ -0,0 +1,17 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="RunConfigurationProducerService">
++    <option name="ignoredProducers">
++      <set>
++        <option value="com.intellij.execution.junit.AbstractAllInDirectoryConfigurationProducer" />
++        <option value="com.intellij.execution.junit.AllInPackageConfigurationProducer" />
++        <option value="com.intellij.execution.junit.PatternConfigurationProducer" />
++        <option value="com.intellij.execution.junit.TestInClassConfigurationProducer" />
++        <option value="com.intellij.execution.junit.UniqueIdConfigurationProducer" />
++        <option value="com.intellij.execution.junit.testDiscovery.JUnitTestDiscoveryConfigurationProducer" />
++        <option value="org.jetbrains.kotlin.idea.junit.KotlinJUnitRunConfigurationProducer" />
++        <option value="org.jetbrains.kotlin.idea.junit.KotlinPatternConfigurationProducer" />
++      </set>
++    </option>
++  </component>
++</project>
+\ No newline at end of file
+Index: .idea/.gitignore
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/.gitignore b/.idea/.gitignore
+new file mode 100644
+--- /dev/null	(date 1782306989678)
++++ b/.idea/.gitignore	(date 1782306989678)
+@@ -0,0 +1,3 @@
++# Default ignored files
++/shelf/
++/workspace.xml
+Index: app/src/main/java/com/example/data/SupabaseClient.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.example.data\r\n\r\nimport android.util.Log\r\nimport com.example.BuildConfig\r\nimport com.squareup.moshi.Json\r\nimport com.squareup.moshi.JsonClass\r\nimport com.squareup.moshi.Moshi\r\nimport com.squareup.moshi.JsonAdapter\r\nimport com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory\r\nimport okhttp3.OkHttpClient\r\nimport okhttp3.logging.HttpLoggingInterceptor\r\nimport retrofit2.Retrofit\r\nimport retrofit2.converter.moshi.MoshiConverterFactory\r\nimport retrofit2.http.*\r\nimport java.util.concurrent.TimeUnit\r\n\r\n// ==========================================\r\n// SUPABASE API DTO MODELS\r\n// ==========================================\r\n\r\n@JsonClass(generateAdapter = true)\r\ndata class CustomerDto(\r\n    @Json(name = \"id\") val id: Int? = null,\r\n    @Json(name = \"customer_name\") val customerName: String,\r\n    @Json(name = \"mobile_number\") val mobileNumber: String,\r\n    @Json(name = \"alternate_mobile_number\") val alternateMobileNumber: String? = null,\r\n    @Json(name = \"address\") val address: String? = null,\r\n    @Json(name = \"city_village\") val cityVillage: String? = null,\r\n    @Json(name = \"product_purchased\") val productPurchased: String? = null,\r\n    @Json(name = \"purchase_date\") val purchaseDate: String,\r\n    @Json(name = \"total_bill_amount\") val totalBillAmount: Double,\r\n    @Json(name = \"pending_amount\") val pendingAmount: Double,\r\n    @Json(name = \"notes\") val notes: String? = null,\r\n    @Json(name = \"status\") val status: String,\r\n    @Json(name = \"invoice_number\") val invoiceNumber: String? = null,\r\n    @Json(name = \"model_detail\") val modelDetail: String? = null\r\n)\r\n\r\n@JsonClass(generateAdapter = true)\r\ndata class DueDto(\r\n    @Json(name = \"id\") val id: Int? = null,\r\n    @Json(name = \"customer_id\") val customerId: Int,\r\n    @Json(name = \"customer_name\") val customerName: String,\r\n    @Json(name = \"due_amount\") val dueAmount: Double,\r\n    @Json(name = \"due_date\") val dueDate: String,\r\n    @Json(name = \"reminder_date\") val reminderDate: String? = null,\r\n    @Json(name = \"due_status\") val dueStatus: String,\r\n    @Json(name = \"notes\") val notes: String? = null,\r\n    @Json(name = \"invoice_number\") val invoiceNumber: String? = null\r\n)\r\n\r\n@JsonClass(generateAdapter = true)\r\ndata class PaymentEntryDto(\r\n    @Json(name = \"id\") val id: Int? = null,\r\n    @Json(name = \"customer_id\") val customerId: Int,\r\n    @Json(name = \"customer_name\") val customerName: String,\r\n    @Json(name = \"due_id\") val dueId: Int? = null,\r\n    @Json(name = \"amount_paid\") val amountPaid: Double,\r\n    @Json(name = \"payment_date\") val paymentDate: String,\r\n    @Json(name = \"payment_mode\") val paymentMode: String,\r\n    @Json(name = \"notes\") val notes: String? = null,\r\n    @Json(name = \"collected_by\") val collectedBy: String\r\n)\r\n\r\n@JsonClass(generateAdapter = true)\r\ndata class PaymentFollowupDto(\r\n    @Json(name = \"id\") val id: Int? = null,\r\n    @Json(name = \"customer_id\") val customerId: Int,\r\n    @Json(name = \"customer_name\") val customerName: String,\r\n    @Json(name = \"follow_up_date\") val followUpDate: String,\r\n    @Json(name = \"notes\") val notes: String,\r\n    @Json(name = \"next_follow_up_date\") val nextFollowUpDate: String? = null,\r\n    @Json(name = \"promise_to_pay_date\") val promiseToPayDate: String? = null,\r\n    @Json(name = \"staff_name\") val staffName: String,\r\n    @Json(name = \"status\") val status: String\r\n)\r\n\r\n@JsonClass(generateAdapter = true)\r\ndata class ReferralPersonDto(\r\n    @Json(name = \"id\") val id: Int? = null,\r\n    @Json(name = \"full_name\") val fullName: String,\r\n    @Json(name = \"mobile_number\") val mobileNumber: String,\r\n    @Json(name = \"address\") val address: String? = null,\r\n    @Json(name = \"city\") val city: String? = null,\r\n    @Json(name = \"notes\") val notes: String? = null\r\n)\r\n\r\n@JsonClass(generateAdapter = true)\r\ndata class CustomerReferralDto(\r\n    @Json(name = \"id\") val id: Int? = null,\r\n    @Json(name = \"customer_id\") val customerId: Int,\r\n    @Json(name = \"customer_name\") val customerName: String,\r\n    @Json(name = \"referred_by_type\") val referredByType: String,\r\n    @Json(name = \"referrer_name\") val referrerName: String,\r\n    @Json(name = \"status\") val status: String\r\n)\r\n\r\n@JsonClass(generateAdapter = true)\r\ndata class StaffMemberDto(\r\n    @Json(name = \"id\") val id: Int? = null,\r\n    @Json(name = \"name\") val name: String,\r\n    @Json(name = \"mobile\") val mobile: String,\r\n    @Json(name = \"role\") val role: String,\r\n    @Json(name = \"is_active\") val isActive: Boolean\r\n)\r\n\r\n@JsonClass(generateAdapter = true)\r\ndata class WhatsAppReminderLogDto(\r\n    @Json(name = \"id\") val id: Int? = null,\r\n    @Json(name = \"sent_date\") val sentDate: String,\r\n    @Json(name = \"sent_by\") val sentBy: String,\r\n    @Json(name = \"customer_id\") val customerId: Int? = null,\r\n    @Json(name = \"customer_name\") val customerName: String,\r\n    @Json(name = \"message\") val message: String\r\n)\r\n\r\n@JsonClass(generateAdapter = true)\r\ndata class MessageTemplateDto(\r\n    @Json(name = \"id\") val id: Int? = null,\r\n    @Json(name = \"name\") val name: String,\r\n    @Json(name = \"language\") val language: String,\r\n    @Json(name = \"template_text\") val templateText: String\r\n)\r\n\r\n@JsonClass(generateAdapter = true)\r\ndata class ActivityLogDto(\r\n    @Json(name = \"id\") val id: Int? = null,\r\n    @Json(name = \"staff_name\") val staffName: String,\r\n    @Json(name = \"action_type\") val actionType: String,\r\n    @Json(name = \"description\") val description: String\r\n)\r\n\r\n// ==========================================\r\n// RETROFIT API SERVICE FOR SUPABASE REST\r\n// ==========================================\r\n\r\ninterface SupabaseRestService {\r\n\r\n    @GET(\"customers\")\r\n    suspend fun getCustomers(): List<CustomerDto>\r\n\r\n    @POST(\"customers\")\r\n    suspend fun upsertCustomer(\r\n        @Header(\"Prefer\") prefer: String = \"resolution=merge-duplicates\",\r\n        @Query(\"on_conflict\") onConflict: String = \"id\",\r\n        @Body body: List<CustomerDto>\r\n    ): List<CustomerDto>\r\n\r\n    @DELETE(\"customers\")\r\n    suspend fun deleteCustomer(@Query(\"id\") filter: String)\r\n\r\n    @GET(\"dues\")\r\n    suspend fun getDues(): List<DueDto>\r\n\r\n    @POST(\"dues\")\r\n    suspend fun upsertDue(\r\n        @Header(\"Prefer\") prefer: String = \"resolution=merge-duplicates\",\r\n        @Query(\"on_conflict\") onConflict: String = \"id\",\r\n        @Body body: List<DueDto>\r\n    ): List<DueDto>\r\n\r\n    @DELETE(\"dues\")\r\n    suspend fun deleteDue(@Query(\"id\") filter: String)\r\n\r\n    @GET(\"payment_entries\")\r\n    suspend fun getPaymentEntries(): List<PaymentEntryDto>\r\n\r\n    @POST(\"payment_entries\")\r\n    suspend fun upsertPaymentEntry(\r\n        @Header(\"Prefer\") prefer: String = \"resolution=merge-duplicates\",\r\n        @Query(\"on_conflict\") onConflict: String = \"id\",\r\n        @Body body: List<PaymentEntryDto>\r\n    ): List<PaymentEntryDto>\r\n\r\n    @DELETE(\"payment_entries\")\r\n    suspend fun deletePaymentEntry(@Query(\"id\") filter: String)\r\n\r\n    @GET(\"payment_followups\")\r\n    suspend fun getPaymentFollowups(): List<PaymentFollowupDto>\r\n\r\n    @POST(\"payment_followups\")\r\n    suspend fun upsertPaymentFollowup(\r\n        @Header(\"Prefer\") prefer: String = \"resolution=merge-duplicates\",\r\n        @Query(\"on_conflict\") onConflict: String = \"id\",\r\n        @Body body: List<PaymentFollowupDto>\r\n    ): List<PaymentFollowupDto>\r\n\r\n    @DELETE(\"payment_followups\")\r\n    suspend fun deletePaymentFollowup(@Query(\"id\") filter: String)\r\n\r\n    @GET(\"referral_persons\")\r\n    suspend fun getReferralPersons(): List<ReferralPersonDto>\r\n\r\n    @POST(\"referral_persons\")\r\n    suspend fun upsertReferralPerson(\r\n        @Header(\"Prefer\") prefer: String = \"resolution=merge-duplicates\",\r\n        @Query(\"on_conflict\") onConflict: String = \"id\",\r\n        @Body body: List<ReferralPersonDto>\r\n    ): List<ReferralPersonDto>\r\n\r\n    @DELETE(\"referral_persons\")\r\n    suspend fun deleteReferralPerson(@Query(\"id\") filter: String)\r\n\r\n    @GET(\"customer_referrals\")\r\n    suspend fun getCustomerReferrals(): List<CustomerReferralDto>\r\n\r\n    @POST(\"customer_referrals\")\r\n    suspend fun upsertCustomerReferral(\r\n        @Header(\"Prefer\") prefer: String = \"resolution=merge-duplicates\",\r\n        @Query(\"on_conflict\") onConflict: String = \"id\",\r\n        @Body body: List<CustomerReferralDto>\r\n    ): List<CustomerReferralDto>\r\n\r\n    @GET(\"staff_members\")\r\n    suspend fun getStaffMembers(): List<StaffMemberDto>\r\n\r\n    @POST(\"staff_members\")\r\n    suspend fun upsertStaffMember(\r\n        @Header(\"Prefer\") prefer: String = \"resolution=merge-duplicates\",\r\n        @Query(\"on_conflict\") onConflict: String = \"id\",\r\n        @Body body: List<StaffMemberDto>\r\n    ): List<StaffMemberDto>\r\n\r\n    @DELETE(\"staff_members\")\r\n    suspend fun deleteStaffMember(@Query(\"id\") filter: String)\r\n\r\n    @GET(\"whatsapp_reminder_logs\")\r\n    suspend fun getWhatsAppReminderLogs(): List<WhatsAppReminderLogDto>\r\n\r\n    @POST(\"whatsapp_reminder_logs\")\r\n    suspend fun upsertWhatsAppReminderLog(\r\n        @Header(\"Prefer\") prefer: String = \"resolution=merge-duplicates\",\r\n        @Query(\"on_conflict\") onConflict: String = \"id\",\r\n        @Body body: List<WhatsAppReminderLogDto>\r\n    ): List<WhatsAppReminderLogDto>\r\n\r\n    @GET(\"message_templates\")\r\n    suspend fun getMessageTemplates(): List<MessageTemplateDto>\r\n\r\n    @POST(\"message_templates\")\r\n    suspend fun upsertMessageTemplate(\r\n        @Header(\"Prefer\") prefer: String = \"resolution=merge-duplicates\",\r\n        @Query(\"on_conflict\") onConflict: String = \"id\",\r\n        @Body body: List<MessageTemplateDto>\r\n    ): List<MessageTemplateDto>\r\n\r\n    @GET(\"activity_logs\")\r\n    suspend fun getActivityLogs(): List<ActivityLogDto>\r\n\r\n    @POST(\"activity_logs\")\r\n    suspend fun upsertActivityLog(\r\n        @Header(\"Prefer\") prefer: String = \"resolution=merge-duplicates\",\r\n        @Query(\"on_conflict\") onConflict: String = \"id\",\r\n        @Body body: List<ActivityLogDto>\r\n    ): List<ActivityLogDto>\r\n}\r\n\r\n// ==========================================\r\n// SUPABASE CLIENT INITIALIZATION & WRAPPER\r\n// ==========================================\r\n\r\nobject SupabaseClient {\r\n    private const val TAG = \"SupabaseClient\"\r\n\r\n    // Fetch parameters from BuildConfig safely\r\n    val supabaseUrl: String\r\n        get() = try {\r\n            val rawUrl = BuildConfig.SUPABASE_URL\r\n            if (rawUrl.isNullOrEmpty()) {\r\n                \"https://your-project-id.supabase.co\"\r\n            } else {\r\n                rawUrl.trim().removeSuffix(\"/\")\r\n            }\r\n        } catch (e: Throwable) {\r\n            \"https://your-project-id.supabase.co\"\r\n        }\r\n\r\n    val supabaseAnonKey: String\r\n        get() = try {\r\n            val rawKey = BuildConfig.SUPABASE_ANON_KEY\r\n            if (rawKey.isNullOrEmpty()) {\r\n                \"your-supabase-public-anon-key\"\r\n            } else {\r\n                rawKey.trim()\r\n            }\r\n        } catch (e: Throwable) {\r\n            \"your-supabase-public-anon-key\"\r\n        }\r\n\r\n    val isConfigured: Boolean\r\n        get() = supabaseUrl.isNotEmpty() && \r\n                !supabaseUrl.contains(\"your-project-id\") && \r\n                supabaseAnonKey.isNotEmpty() && \r\n                !supabaseAnonKey.contains(\"your-supabase-public-anon\")\r\n\r\n    val service: SupabaseRestService? by lazy {\r\n        if (!isConfigured) {\r\n            Log.w(TAG, \"Supabase credentials are placeholders. REST client disabled.\")\r\n            null\r\n        } else {\r\n            try {\r\n                val loggingInterceptor = HttpLoggingInterceptor().apply {\r\n                    level = HttpLoggingInterceptor.Level.BODY\r\n                }\r\n\r\n                val okHttpClient = OkHttpClient.Builder()\r\n                    .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)\r\n                    .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)\r\n                    .writeTimeout(15, java.util.concurrent.TimeUnit.SECONDS)\r\n                    .addInterceptor(loggingInterceptor)\r\n                    .addInterceptor { chain ->\r\n                        val original = chain.request()\r\n                        val request = original.newBuilder()\r\n                            .header(\"apikey\", supabaseAnonKey)\r\n                            .header(\"Authorization\", \"Bearer $supabaseAnonKey\")\r\n                            .header(\"Content-Type\", \"application/json\")\r\n                            .header(\"Accept\", \"application/json\")\r\n                            .method(original.method, original.body)\r\n                            .build()\r\n                        chain.proceed(request)\r\n                    }\r\n                    .build()\r\n\r\n                val moshi = Moshi.Builder()\r\n                    .add(AlwaysSerializeNullsFactory())\r\n                    .add(KotlinJsonAdapterFactory())\r\n                    .build()\r\n\r\n                val urlWithSlash = if (supabaseUrl.endsWith(\"/\")) supabaseUrl else \"$supabaseUrl/\"\r\n                val restUrl = \"${urlWithSlash}rest/v1/\"\r\n\r\n                Retrofit.Builder()\r\n                    .baseUrl(restUrl)\r\n                    .client(okHttpClient)\r\n                    .addConverterFactory(MoshiConverterFactory.create(moshi))\r\n                    .build()\r\n                    .create(SupabaseRestService::class.java)\r\n            } catch (e: Exception) {\r\n                Log.e(TAG, \"Error initializing Retrofit client: ${e.message}\", e)\r\n                null\r\n            }\r\n        }\r\n    }\r\n}\r\n\r\nclass AlwaysSerializeNullsFactory : JsonAdapter.Factory {\r\n    override fun create(\r\n        type: java.lang.reflect.Type,\r\n        annotations: Set<Annotation>,\r\n        moshi: Moshi\r\n    ): JsonAdapter<*>? {\r\n        val delegate = moshi.nextAdapter<Any>(this, type, annotations)\r\n        return delegate.serializeNulls()\r\n    }\r\n}\r\n\r\n// ==========================================\r\n// MAPPER EXTENSION FUNCTIONS\r\n// ==========================================\r\n\r\nfun Customer.toDto() = CustomerDto(\r\n    id = if (id == 0) null else id,\r\n    customerName = customerName,\r\n    mobileNumber = mobileNumber,\r\n    alternateMobileNumber = alternateMobileNumber.takeIf { it.isNotEmpty() },\r\n    address = address.takeIf { it.isNotEmpty() },\r\n    cityVillage = cityVillage.takeIf { it.isNotEmpty() },\r\n    productPurchased = productPurchased.takeIf { it.isNotEmpty() },\r\n    purchaseDate = purchaseDate,\r\n    totalBillAmount = totalBillAmount,\r\n    pendingAmount = pendingAmount,\r\n    notes = notes.takeIf { it.isNotEmpty() },\r\n    status = status,\r\n    invoiceNumber = invoiceNumber.takeIf { it.isNotEmpty() },\r\n    modelDetail = modelDetail.takeIf { it.isNotEmpty() }\r\n)\r\n\r\nfun CustomerDto.toEntity() = Customer(\r\n    id = id ?: 0,\r\n    customerName = customerName,\r\n    mobileNumber = mobileNumber,\r\n    alternateMobileNumber = alternateMobileNumber ?: \"\",\r\n    address = address ?: \"\",\r\n    cityVillage = cityVillage ?: \"\",\r\n    productPurchased = productPurchased ?: \"\",\r\n    purchaseDate = purchaseDate,\r\n    totalBillAmount = totalBillAmount,\r\n    pendingAmount = pendingAmount,\r\n    notes = notes ?: \"\",\r\n    status = status,\r\n    invoiceNumber = invoiceNumber ?: \"\",\r\n    modelDetail = modelDetail ?: \"\"\r\n)\r\n\r\nfun Due.toDto() = DueDto(\r\n    id = if (id == 0) null else id,\r\n    customerId = customerId,\r\n    customerName = customerName,\r\n    dueAmount = dueAmount,\r\n    dueDate = dueDate,\r\n    reminderDate = reminderDate.takeIf { it.isNotEmpty() },\r\n    dueStatus = dueStatus,\r\n    notes = notes.takeIf { it.isNotEmpty() },\r\n    invoiceNumber = invoiceNumber.takeIf { it.isNotEmpty() }\r\n)\r\n\r\nfun DueDto.toEntity() = Due(\r\n    id = id ?: 0,\r\n    customerId = customerId,\r\n    customerName = customerName,\r\n    dueAmount = dueAmount,\r\n    dueDate = dueDate,\r\n    reminderDate = reminderDate ?: \"\",\r\n    dueStatus = dueStatus,\r\n    notes = notes ?: \"\",\r\n    invoiceNumber = invoiceNumber ?: \"\"\r\n)\r\n\r\nfun PaymentEntry.toDto() = PaymentEntryDto(\r\n    id = if (id == 0) null else id,\r\n    customerId = customerId,\r\n    customerName = customerName,\r\n    dueId = if (dueId == 0) null else dueId,\r\n    amountPaid = amountPaid,\r\n    paymentDate = paymentDate,\r\n    paymentMode = paymentMode,\r\n    notes = notes.takeIf { it.isNotEmpty() },\r\n    collectedBy = collectedBy\r\n)\r\n\r\nfun PaymentEntryDto.toEntity() = PaymentEntry(\r\n    id = id ?: 0,\r\n    customerId = customerId,\r\n    customerName = customerName,\r\n    dueId = dueId ?: 0,\r\n    amountPaid = amountPaid,\r\n    paymentDate = paymentDate,\r\n    paymentMode = paymentMode,\r\n    notes = notes ?: \"\",\r\n    collectedBy = collectedBy\r\n)\r\n\r\nfun PaymentFollowup.toDto() = PaymentFollowupDto(\r\n    id = if (id == 0) null else id,\r\n    customerId = customerId,\r\n    customerName = customerName,\r\n    followUpDate = followUpDate,\r\n    notes = notes,\r\n    nextFollowUpDate = nextFollowUpDate.takeIf { it.isNotEmpty() },\r\n    promiseToPayDate = promiseToPayDate.takeIf { it.isNotEmpty() },\r\n    staffName = staffName,\r\n    status = status\r\n)\r\n\r\nfun PaymentFollowupDto.toEntity() = PaymentFollowup(\r\n    id = id ?: 0,\r\n    customerId = customerId,\r\n    customerName = customerName,\r\n    followUpDate = followUpDate,\r\n    notes = notes,\r\n    nextFollowUpDate = nextFollowUpDate ?: \"\",\r\n    promiseToPayDate = promiseToPayDate ?: \"\",\r\n    staffName = staffName,\r\n    status = status\r\n)\r\n\r\nfun ReferralPerson.toDto() = ReferralPersonDto(\r\n    id = if (id == 0) null else id,\r\n    fullName = fullName,\r\n    mobileNumber = mobileNumber,\r\n    address = address.takeIf { it.isNotEmpty() },\r\n    city = city.takeIf { it.isNotEmpty() },\r\n    notes = notes.takeIf { it.isNotEmpty() }\r\n)\r\n\r\nfun ReferralPersonDto.toEntity() = ReferralPerson(\r\n    id = id ?: 0,\r\n    fullName = fullName,\r\n    mobileNumber = mobileNumber,\r\n    address = address ?: \"\",\r\n    city = city ?: \"\",\r\n    notes = notes ?: \"\"\r\n)\r\n\r\nfun CustomerReferral.toDto() = CustomerReferralDto(\r\n    id = if (id == 0) null else id,\r\n    customerId = customerId,\r\n    customerName = customerName,\r\n    referredByType = referredByType,\r\n    referrerName = referrerName,\r\n    status = status\r\n)\r\n\r\nfun CustomerReferralDto.toEntity() = CustomerReferral(\r\n    id = id ?: 0,\r\n    customerId = customerId,\r\n    customerName = customerName,\r\n    referredByType = referredByType,\r\n    referrerName = referrerName,\r\n    status = status\r\n)\r\n\r\nfun StaffMember.toDto() = StaffMemberDto(\r\n    id = if (id == 0) null else id,\r\n    name = name,\r\n    mobile = mobile,\r\n    role = role,\r\n    isActive = isActive\r\n)\r\n\r\nfun StaffMemberDto.toEntity() = StaffMember(\r\n    id = id ?: 0,\r\n    name = name,\r\n    mobile = mobile,\r\n    role = role,\r\n    isActive = isActive\r\n)\r\n\r\nfun WhatsAppReminderLog.toDto() = WhatsAppReminderLogDto(\r\n    id = if (id == 0) null else id,\r\n    sentDate = sentDate,\r\n    sentBy = sentBy,\r\n    customerId = if (customerId == 0) null else customerId,\r\n    customerName = customerName,\r\n    message = message\r\n)\r\n\r\nfun WhatsAppReminderLogDto.toEntity() = WhatsAppReminderLog(\r\n    id = id ?: 0,\r\n    sentDate = sentDate,\r\n    sentBy = sentBy,\r\n    customerId = customerId ?: 0,\r\n    customerName = customerName,\r\n    message = message\r\n)\r\n\r\nfun MessageTemplate.toDto() = MessageTemplateDto(\r\n    id = if (id == 0) null else id,\r\n    name = name,\r\n    language = language,\r\n    templateText = templateText\r\n)\r\n\r\nfun MessageTemplateDto.toEntity() = MessageTemplate(\r\n    id = id ?: 0,\r\n    name = name,\r\n    language = language,\r\n    templateText = templateText\r\n)\r\n\r\nfun ActivityLog.toDto() = ActivityLogDto(\r\n    id = if (id == 0) null else id,\r\n    staffName = staffName,\r\n    actionType = actionType,\r\n    description = description\r\n)\r\n\r\nfun ActivityLogDto.toEntity() = ActivityLog(\r\n    id = id ?: 0,\r\n    staffName = staffName,\r\n    actionType = actionType,\r\n    description = description\r\n)\r\n\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/data/SupabaseClient.kt b/app/src/main/java/com/example/data/SupabaseClient.kt
+--- a/app/src/main/java/com/example/data/SupabaseClient.kt	(revision a2de561ba9872edc5e75657de70febcc90cbe04d)
++++ b/app/src/main/java/com/example/data/SupabaseClient.kt	(date 1782309654018)
+@@ -141,10 +141,10 @@
+ 
+     @POST("customers")
+     suspend fun upsertCustomer(
+-        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
++        @Header("Prefer") prefer: String = "resolution=merge-duplicates,return=minimal",
+         @Query("on_conflict") onConflict: String = "id",
+         @Body body: List<CustomerDto>
+-    ): List<CustomerDto>
++    )
+ 
+     @DELETE("customers")
+     suspend fun deleteCustomer(@Query("id") filter: String)
+@@ -154,10 +154,10 @@
+ 
+     @POST("dues")
+     suspend fun upsertDue(
+-        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
++        @Header("Prefer") prefer: String = "resolution=merge-duplicates,return=minimal",
+         @Query("on_conflict") onConflict: String = "id",
+         @Body body: List<DueDto>
+-    ): List<DueDto>
++    )
+ 
+     @DELETE("dues")
+     suspend fun deleteDue(@Query("id") filter: String)
+@@ -167,10 +167,10 @@
+ 
+     @POST("payment_entries")
+     suspend fun upsertPaymentEntry(
+-        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
++        @Header("Prefer") prefer: String = "resolution=merge-duplicates,return=minimal",
+         @Query("on_conflict") onConflict: String = "id",
+         @Body body: List<PaymentEntryDto>
+-    ): List<PaymentEntryDto>
++    )
+ 
+     @DELETE("payment_entries")
+     suspend fun deletePaymentEntry(@Query("id") filter: String)
+@@ -180,10 +180,10 @@
+ 
+     @POST("payment_followups")
+     suspend fun upsertPaymentFollowup(
+-        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
++        @Header("Prefer") prefer: String = "resolution=merge-duplicates,return=minimal",
+         @Query("on_conflict") onConflict: String = "id",
+         @Body body: List<PaymentFollowupDto>
+-    ): List<PaymentFollowupDto>
++    )
+ 
+     @DELETE("payment_followups")
+     suspend fun deletePaymentFollowup(@Query("id") filter: String)
+@@ -193,10 +193,10 @@
+ 
+     @POST("referral_persons")
+     suspend fun upsertReferralPerson(
+-        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
++        @Header("Prefer") prefer: String = "resolution=merge-duplicates,return=minimal",
+         @Query("on_conflict") onConflict: String = "id",
+         @Body body: List<ReferralPersonDto>
+-    ): List<ReferralPersonDto>
++    )
+ 
+     @DELETE("referral_persons")
+     suspend fun deleteReferralPerson(@Query("id") filter: String)
+@@ -206,20 +206,20 @@
+ 
+     @POST("customer_referrals")
+     suspend fun upsertCustomerReferral(
+-        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
++        @Header("Prefer") prefer: String = "resolution=merge-duplicates,return=minimal",
+         @Query("on_conflict") onConflict: String = "id",
+         @Body body: List<CustomerReferralDto>
+-    ): List<CustomerReferralDto>
++    )
+ 
+     @GET("staff_members")
+     suspend fun getStaffMembers(): List<StaffMemberDto>
+ 
+     @POST("staff_members")
+     suspend fun upsertStaffMember(
+-        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
++        @Header("Prefer") prefer: String = "resolution=merge-duplicates,return=minimal",
+         @Query("on_conflict") onConflict: String = "id",
+         @Body body: List<StaffMemberDto>
+-    ): List<StaffMemberDto>
++    )
+ 
+     @DELETE("staff_members")
+     suspend fun deleteStaffMember(@Query("id") filter: String)
+@@ -229,30 +229,30 @@
+ 
+     @POST("whatsapp_reminder_logs")
+     suspend fun upsertWhatsAppReminderLog(
+-        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
++        @Header("Prefer") prefer: String = "resolution=merge-duplicates,return=minimal",
+         @Query("on_conflict") onConflict: String = "id",
+         @Body body: List<WhatsAppReminderLogDto>
+-    ): List<WhatsAppReminderLogDto>
++    )
+ 
+     @GET("message_templates")
+     suspend fun getMessageTemplates(): List<MessageTemplateDto>
+ 
+     @POST("message_templates")
+     suspend fun upsertMessageTemplate(
+-        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
++        @Header("Prefer") prefer: String = "resolution=merge-duplicates,return=minimal",
+         @Query("on_conflict") onConflict: String = "id",
+         @Body body: List<MessageTemplateDto>
+-    ): List<MessageTemplateDto>
++    )
+ 
+     @GET("activity_logs")
+     suspend fun getActivityLogs(): List<ActivityLogDto>
+ 
+     @POST("activity_logs")
+     suspend fun upsertActivityLog(
+-        @Header("Prefer") prefer: String = "resolution=merge-duplicates",
++        @Header("Prefer") prefer: String = "resolution=merge-duplicates,return=minimal",
+         @Query("on_conflict") onConflict: String = "id",
+         @Body body: List<ActivityLogDto>
+-    ): List<ActivityLogDto>
++    )
+ }
+ 
+ // ==========================================
+Index: .idea/deploymentTargetSelector.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/deploymentTargetSelector.xml b/.idea/deploymentTargetSelector.xml
+new file mode 100644
+--- /dev/null	(date 1782306989661)
++++ b/.idea/deploymentTargetSelector.xml	(date 1782306989661)
+@@ -0,0 +1,11 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="deploymentTargetSelector">
++    <selectionStates>
++      <SelectionState runConfigName="app">
++        <option name="selectionMode" value="DROPDOWN" />
++        <DialogSelection />
++      </SelectionState>
++    </selectionStates>
++  </component>
++</project>
+\ No newline at end of file
+Index: .idea/.name
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/.name b/.idea/.name
+new file mode 100644
+--- /dev/null	(date 1782306989637)
++++ b/.idea/.name	(date 1782306989637)
+@@ -0,0 +1,1 @@
++My Application
+\ No newline at end of file
+Index: .idea/misc.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/misc.xml b/.idea/misc.xml
+new file mode 100644
+--- /dev/null	(date 1782306989613)
++++ b/.idea/misc.xml	(date 1782306989613)
+@@ -0,0 +1,10 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="ExternalStorageConfigurationManager" enabled="true" />
++  <component name="ProjectRootManager" version="2" languageLevel="JDK_21" default="true" project-jdk-name="ms-21" project-jdk-type="JavaSDK">
++    <output url="file://$PROJECT_DIR$/build/classes" />
++  </component>
++  <component name="ProjectType">
++    <option name="id" value="Android" />
++  </component>
++</project>
+\ No newline at end of file
+Index: .idea/AndroidProjectSystem.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/AndroidProjectSystem.xml b/.idea/AndroidProjectSystem.xml
+new file mode 100644
+--- /dev/null	(date 1782306989602)
++++ b/.idea/AndroidProjectSystem.xml	(date 1782306989602)
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="AndroidProjectSystem">
++    <option name="providerId" value="com.android.tools.idea.GradleProjectSystem" />
++  </component>
++</project>
+\ No newline at end of file
+Index: .idea/compiler.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/compiler.xml b/.idea/compiler.xml
+new file mode 100644
+--- /dev/null	(date 1782306989785)
++++ b/.idea/compiler.xml	(date 1782306989785)
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="CompilerConfiguration">
++    <bytecodeTargetLevel target="21" />
++  </component>
++</project>
+\ No newline at end of file
+Index: .idea/gradle.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/gradle.xml b/.idea/gradle.xml
+new file mode 100644
+--- /dev/null	(date 1782315461470)
++++ b/.idea/gradle.xml	(date 1782315461470)
+@@ -0,0 +1,18 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="GradleMigrationSettings" migrationVersion="1" />
++  <component name="GradleSettings">
++    <option name="linkedExternalProjectsSettings">
++      <GradleProjectSettings>
++        <option name="testRunner" value="CHOOSE_PER_TEST" />
++        <option name="externalProjectPath" value="$PROJECT_DIR$" />
++        <option name="modules">
++          <set>
++            <option value="$PROJECT_DIR$" />
++            <option value="$PROJECT_DIR$/app" />
++          </set>
++        </option>
++      </GradleProjectSettings>
++    </option>
++  </component>
++</project>
+\ No newline at end of file
+Index: .idea/vcs.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/vcs.xml b/.idea/vcs.xml
+new file mode 100644
+--- /dev/null	(date 1782306989751)
++++ b/.idea/vcs.xml	(date 1782306989751)
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="VcsDirectoryMappings">
++    <mapping directory="" vcs="Git" />
++  </component>
++</project>
+\ No newline at end of file
+Index: .idea/markdown.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/markdown.xml b/.idea/markdown.xml
+new file mode 100644
+--- /dev/null	(date 1782306989723)
++++ b/.idea/markdown.xml	(date 1782306989723)
+@@ -0,0 +1,8 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="MarkdownSettings">
++    <option name="previewPanelProviderInfo">
++      <ProviderInfo name="Compose (experimental)" className="com.intellij.markdown.compose.preview.ComposePanelProvider" />
++    </option>
++  </component>
++</project>
+\ No newline at end of file

@@ -37,6 +37,12 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "phoneworld_crm_database"
                 )
+                    .addCallback(object : RoomDatabase.Callback() {
+                        override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                            super.onOpen(db)
+                            db.execSQL("PRAGMA foreign_keys=ON")
+                        }
+                    })
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

@@ -48,22 +48,24 @@ class AppRepository(private val appDao: AppDao) {
     suspend fun addCustomer(customer: Customer, referredByType: String = "Direct", referrerName: String = "", staffName: String = "Owner"): Int {
         val customerId = appDao.insertCustomer(customer).toInt()
         
-        // Log Referral if applicable
-        if (referredByType != "Direct" && referrerName.isNotEmpty()) {
-            val ref = CustomerReferral(
-                customerId = customerId,
-                customerName = customer.customerName,
-                referredByType = referredByType,
-                referrerName = referrerName
-            )
-            val generatedRefId = appDao.insertCustomerReferral(ref).toInt()
-            val savedRef = ref.copy(id = generatedRefId)
-            pushToSupabase { upsertCustomerReferral(body = listOf(savedRef.toDto())) }
-        }
-
         val updatedCustomer = appDao.getCustomerById(customerId)
         if (updatedCustomer != null) {
-            pushToSupabase { upsertCustomer(body = listOf(updatedCustomer.toDto())) }
+            pushToSupabase { 
+                upsertCustomer(body = listOf(updatedCustomer.toDto())) 
+
+                // Log Referral if applicable AFTER customer is upserted
+                if (referredByType != "Direct" && referrerName.isNotEmpty()) {
+                    val ref = CustomerReferral(
+                        customerId = customerId,
+                        customerName = customer.customerName,
+                        referredByType = referredByType,
+                        referrerName = referrerName
+                    )
+                    val generatedRefId = appDao.insertCustomerReferral(ref).toInt()
+                    val savedRef = ref.copy(id = generatedRefId)
+                    upsertCustomerReferral(body = listOf(savedRef.toDto()))
+                }
+            }
         }
 
         logActivity(staffName, "Create", "Added new customer: ${customer.customerName}")
@@ -407,19 +409,36 @@ class AppRepository(private val appDao: AppDao) {
     suspend fun syncRoomToSupabase(): Boolean {
         val service = SupabaseClient.service ?: return false
         return try {
-            // Retrieve all from Room
-            val customers = appDao.getAllCustomers().first().map { it.toDto() }
-            val dues = appDao.getAllDues().first().map { it.toDto() }
-            val payments = appDao.getAllPayments().first().map { it.toDto() }
-            val followups = appDao.getAllFollowups().first().map { it.toDto() }
-            val referralPersons = appDao.getAllReferralPersons().first().map { it.toDto() }
-            val customerReferrals = appDao.getAllCustomerReferrals().first().map { it.toDto() }
-            val staff = appDao.getAllStaff().first().map { it.toDto() }
-            val reminderLogs = appDao.getAllReminderLogs().first().map { it.toDto() }
-            val templates = appDao.getAllTemplates().first().map { it.toDto() }
-            val activityLogs = appDao.getAllActivityLogs().first().map { it.toDto() }
+            // 1. Retrieve all from Room
+            val rawCustomers = appDao.getAllCustomers().first()
+            val rawDues = appDao.getAllDues().first()
+            val rawPayments = appDao.getAllPayments().first()
+            val rawFollowups = appDao.getAllFollowups().first()
+            val rawReferralPersons = appDao.getAllReferralPersons().first()
+            val rawCustomerReferrals = appDao.getAllCustomerReferrals().first()
+            val rawStaff = appDao.getAllStaff().first()
+            val rawReminderLogs = appDao.getAllReminderLogs().first()
+            val rawTemplates = appDao.getAllTemplates().first()
+            val rawActivityLogs = appDao.getAllActivityLogs().first()
 
-            // Upsert in batches
+            // 2. Data Integrity: Filter out orphaned records to avoid foreign key violations in Supabase
+            val validCustomerIds = rawCustomers.map { it.id }.toSet()
+            val validDueIds = rawDues.map { it.id }.toSet()
+
+            val customers = rawCustomers.map { it.toDto() }
+            val dues = rawDues.filter { validCustomerIds.contains(it.customerId) }.map { it.toDto() }
+            val payments = rawPayments.filter { 
+                validCustomerIds.contains(it.customerId) && (it.dueId == null || it.dueId == 0 || validDueIds.contains(it.dueId)) 
+            }.map { it.toDto() }
+            val followups = rawFollowups.filter { validCustomerIds.contains(it.customerId) }.map { it.toDto() }
+            val referralPersons = rawReferralPersons.map { it.toDto() }
+            val customerReferrals = rawCustomerReferrals.filter { validCustomerIds.contains(it.customerId) }.map { it.toDto() }
+            val staff = rawStaff.map { it.toDto() }
+            val reminderLogs = rawReminderLogs.filter { it.customerId == null || it.customerId == 0 || validCustomerIds.contains(it.customerId) }.map { it.toDto() }
+            val templates = rawTemplates.map { it.toDto() }
+            val activityLogs = rawActivityLogs.map { it.toDto() }
+
+            // 3. Upsert in batches
             if (customers.isNotEmpty()) service.upsertCustomer(body = customers)
             if (dues.isNotEmpty()) service.upsertDue(body = dues)
             if (payments.isNotEmpty()) service.upsertPaymentEntry(body = payments)
