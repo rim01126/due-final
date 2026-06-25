@@ -48,27 +48,21 @@ object SupabaseCrudUtils {
      * CREATE (Upsert): Saves or inserts a payment entry into Supabase.
      * Converts the entity to a Dto before posting and maps the response back.
      */
-    suspend fun createPaymentEntry(payment: PaymentEntry): PaymentEntry? {
+    suspend fun createPaymentEntry(payment: PaymentEntry): Boolean {
         val service = SupabaseClient.service
         if (service == null) {
             Log.e(TAG, "createPaymentEntry: Supabase REST service is not initialized.")
-            return null
+            return false
         }
         return try {
             val dto = payment.toDto()
             Log.d(TAG, "[CREATE/UPSERT] Sending payment entry DTO: $dto")
-            val results = service.upsertPaymentEntry(body = listOf(dto))
-            if (results.isNotEmpty()) {
-                val savedEntity = results.first().toEntity()
-                Log.d(TAG, "[CREATE/UPSERT] Successfully saved payment entry with ID: ${savedEntity.id}")
-                savedEntity
-            } else {
-                Log.w(TAG, "[CREATE/UPSERT] Upsert response returned an empty list.")
-                null
-            }
+            service.upsertPaymentEntry(body = listOf(dto))
+            Log.d(TAG, "[CREATE/UPSERT] Successfully called upsert for payment entry.")
+            true
         } catch (e: Exception) {
             Log.e(TAG, "Exception encountered in createPaymentEntry: ${e.message}", e)
-            null
+            false
         }
     }
 
@@ -76,10 +70,10 @@ object SupabaseCrudUtils {
      * UPDATE: Updates an existing payment entry on Supabase.
      * Leverages the upsert logic to overwrite records matching the primary id.
      */
-    suspend fun updatePaymentEntry(payment: PaymentEntry): PaymentEntry? {
+    suspend fun updatePaymentEntry(payment: PaymentEntry): Boolean {
         if (payment.id == 0) {
             Log.e(TAG, "updatePaymentEntry: Aborted update. Target payment entry ID must not be 0.")
-            return null
+            return false
         }
         Log.d(TAG, "Forwarding update request for payment ID ${payment.id}...")
         return createPaymentEntry(payment)
@@ -139,27 +133,21 @@ object SupabaseCrudUtils {
      * CREATE (Upsert): Saves or inserts a payment follow-up into Supabase.
      * Converts the entity to a Dto before posting and maps the response back.
      */
-    suspend fun createPaymentFollowup(followup: PaymentFollowup): PaymentFollowup? {
+    suspend fun createPaymentFollowup(followup: PaymentFollowup): Boolean {
         val service = SupabaseClient.service
         if (service == null) {
             Log.e(TAG, "createPaymentFollowup: Supabase REST service is not initialized.")
-            return null
+            return false
         }
         return try {
             val dto = followup.toDto()
             Log.d(TAG, "[CREATE/UPSERT] Sending payment followup DTO: $dto")
-            val results = service.upsertPaymentFollowup(body = listOf(dto))
-            if (results.isNotEmpty()) {
-                val savedEntity = results.first().toEntity()
-                Log.d(TAG, "[CREATE/UPSERT] Successfully saved payment followup with ID: ${savedEntity.id}")
-                savedEntity
-            } else {
-                Log.w(TAG, "[CREATE/UPSERT] Upsert response returned an empty list.")
-                null
-            }
+            service.upsertPaymentFollowup(body = listOf(dto))
+            Log.d(TAG, "[CREATE/UPSERT] Successfully called upsert for payment followup.")
+            true
         } catch (e: Exception) {
             Log.e(TAG, "Exception encountered in createPaymentFollowup: ${e.message}", e)
-            null
+            false
         }
     }
 
@@ -167,10 +155,10 @@ object SupabaseCrudUtils {
      * UPDATE: Updates an existing payment follow-up on Supabase.
      * Overwrites status, notes, or next follow-up dates matching the primary id.
      */
-    suspend fun updatePaymentFollowup(followup: PaymentFollowup): PaymentFollowup? {
+    suspend fun updatePaymentFollowup(followup: PaymentFollowup): Boolean {
         if (followup.id == 0) {
             Log.e(TAG, "updatePaymentFollowup: Aborted update. Target follow-up ID must not be 0.")
-            return null
+            return false
         }
         Log.d(TAG, "Forwarding update request for follow-up ID ${followup.id}...")
         return createPaymentFollowup(followup)
