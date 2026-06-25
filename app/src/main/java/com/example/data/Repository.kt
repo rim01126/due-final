@@ -80,8 +80,8 @@ class AppRepository(private val appDao: AppDao) {
         appDao.deleteCustomer(customer)
         appDao.deleteDuesByCustomerId(customer.id)
         pushToSupabase {
-            deleteCustomer("id=eq.${customer.id}")
-            deleteDue("customer_id=eq.${customer.id}")
+            deleteCustomer(mapOf("id" to "eq.${customer.id}"))
+            deleteDue(mapOf("customer_id" to "eq.${customer.id}"))
         }
         logActivity(staffName, "Delete", "Deleted customer: ${customer.customerName}")
     }
@@ -101,7 +101,7 @@ class AppRepository(private val appDao: AppDao) {
     suspend fun deleteDue(dueId: Int, customerId: Int, staffName: String = "Owner") {
         val due = appDao.getDueById(dueId)
         appDao.deleteDueById(dueId)
-        pushToSupabase { deleteDue("id=eq.$dueId") }
+        pushToSupabase { deleteDue(mapOf("id" to "eq.$dueId")) }
         due?.let {
             logActivity(staffName, "Delete", "Deleted due entry: ₹${it.dueAmount} for ${it.customerName}")
         }
@@ -208,7 +208,7 @@ class AppRepository(private val appDao: AppDao) {
         val person = appDao.getReferralPersonById(id)
         if (person != null) {
             appDao.deleteReferralPersonById(id)
-            pushToSupabase { deleteReferralPerson("id=eq.$id") }
+            pushToSupabase { deleteReferralPerson(mapOf("id" to "eq.$id")) }
             logActivity(staffName, "Delete", "Deleted referral person: ${person.fullName}")
         }
     }
@@ -227,7 +227,7 @@ class AppRepository(private val appDao: AppDao) {
         val staff = appDao.getStaffById(id)
         if (staff != null) {
             appDao.deleteStaffById(id)
-            pushToSupabase { deleteStaffMember("id=eq.$id") }
+            pushToSupabase { deleteStaffMember(mapOf("id" to "eq.$id")) }
             logActivity(operatorName, "Delete", "Deleted staff member: ${staff.name}")
         }
     }

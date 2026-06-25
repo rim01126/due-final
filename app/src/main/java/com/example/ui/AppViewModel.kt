@@ -135,6 +135,17 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 } catch (e: Exception) {
                     syncStatusState.value = "Failed"
                 }
+
+                // Start automatic background sync loop every 15 seconds
+                while (true) {
+                    kotlinx.coroutines.delay(15000)
+                    try {
+                        repository.syncSupabaseToRoom()
+                        repository.syncRoomToSupabase()
+                    } catch (e: Exception) {
+                        // Silent ignore for background sync
+                    }
+                }
             }
         }
     }

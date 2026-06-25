@@ -147,7 +147,7 @@ interface SupabaseRestService {
     ): List<CustomerDto>
 
     @DELETE("customers")
-    suspend fun deleteCustomer(@Query("id") filter: String)
+    suspend fun deleteCustomer(@QueryMap options: Map<String, String>)
 
     @GET("dues")
     suspend fun getDues(): List<DueDto>
@@ -160,7 +160,7 @@ interface SupabaseRestService {
     ): List<DueDto>
 
     @DELETE("dues")
-    suspend fun deleteDue(@Query("id") filter: String)
+    suspend fun deleteDue(@QueryMap options: Map<String, String>)
 
     @GET("payment_entries")
     suspend fun getPaymentEntries(): List<PaymentEntryDto>
@@ -173,7 +173,7 @@ interface SupabaseRestService {
     ): List<PaymentEntryDto>
 
     @DELETE("payment_entries")
-    suspend fun deletePaymentEntry(@Query("id") filter: String)
+    suspend fun deletePaymentEntry(@QueryMap options: Map<String, String>)
 
     @GET("payment_followups")
     suspend fun getPaymentFollowups(): List<PaymentFollowupDto>
@@ -186,7 +186,7 @@ interface SupabaseRestService {
     ): List<PaymentFollowupDto>
 
     @DELETE("payment_followups")
-    suspend fun deletePaymentFollowup(@Query("id") filter: String)
+    suspend fun deletePaymentFollowup(@QueryMap options: Map<String, String>)
 
     @GET("referral_persons")
     suspend fun getReferralPersons(): List<ReferralPersonDto>
@@ -199,7 +199,7 @@ interface SupabaseRestService {
     ): List<ReferralPersonDto>
 
     @DELETE("referral_persons")
-    suspend fun deleteReferralPerson(@Query("id") filter: String)
+    suspend fun deleteReferralPerson(@QueryMap options: Map<String, String>)
 
     @GET("customer_referrals")
     suspend fun getCustomerReferrals(): List<CustomerReferralDto>
@@ -222,7 +222,7 @@ interface SupabaseRestService {
     ): List<StaffMemberDto>
 
     @DELETE("staff_members")
-    suspend fun deleteStaffMember(@Query("id") filter: String)
+    suspend fun deleteStaffMember(@QueryMap options: Map<String, String>)
 
     @GET("whatsapp_reminder_logs")
     suspend fun getWhatsAppReminderLogs(): List<WhatsAppReminderLogDto>

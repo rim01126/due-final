@@ -101,7 +101,7 @@ object SupabaseCrudUtils {
         }
         return try {
             Log.d(TAG, "Requesting hard-deletion for payment ID $paymentId from Supabase...")
-            service.deletePaymentEntry(filter = "id=eq.$paymentId")
+            service.deletePaymentEntry(options = mapOf("id" to "eq.$paymentId"))
             Log.d(TAG, "Successfully requested deletion of payment entry ID $paymentId.")
             true
         } catch (e: Exception) {
@@ -192,7 +192,7 @@ object SupabaseCrudUtils {
         }
         return try {
             Log.d(TAG, "Requesting hard-deletion for follow-up ID $followupId from Supabase...")
-            service.deletePaymentFollowup(filter = "id=eq.$followupId")
+            service.deletePaymentFollowup(options = mapOf("id" to "eq.$followupId"))
             Log.d(TAG, "Successfully requested deletion of payment follow-up ID $followupId.")
             true
         } catch (e: Exception) {
