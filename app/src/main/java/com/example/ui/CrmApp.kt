@@ -2322,10 +2322,20 @@ fun AddCustomerDialog(
 
                 OutlinedTextField(
                     value = mobile,
-                    onValueChange = { mobile = it },
+                    onValueChange = { 
+                        if (it.length <= 10 && it.all { char -> char.isDigit() }) {
+                            mobile = it 
+                        }
+                    },
                     label = { Text(AppStrings.mobileNumber(lang)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                    modifier = Modifier.fillMaxWidth().testTag("cust_mobile_field")
+                    modifier = Modifier.fillMaxWidth().testTag("cust_mobile_field"),
+                    isError = mobile.isNotEmpty() && mobile.length != 10,
+                    supportingText = {
+                        if (mobile.isNotEmpty() && mobile.length != 10) {
+                            Text(if (lang == Lang.EN) "Mobile number must be 10 digits" else "મોબાઇલ નંબર 10 અંકનો હોવો જોઈએ")
+                        }
+                    }
                 )
 
                 OutlinedTextField(
@@ -2687,6 +2697,10 @@ fun CustomerDetailScreen(viewModel: AppViewModel, customerId: Int, lang: Lang) {
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Column(modifier = Modifier.weight(1f)) {
+                        Text(text = AppStrings.pendingAmount(lang), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(text = "₹${customer.pendingAmount.toInt()}", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold, color = StatusColors.getStatusColor(customer.status)))
+                    }
+                    Column(horizontalAlignment = Alignment.End, modifier = Modifier.weight(1f)) {
                         Text(text = if (lang == Lang.EN) "Purchased product" else "ખરીદેલ ફોન", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(text = customer.productPurchased, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
                         if (customer.modelDetail.isNotEmpty()) {
@@ -2694,17 +2708,6 @@ fun CustomerDetailScreen(viewModel: AppViewModel, customerId: Int, lang: Lang) {
                                 text = "(${customer.modelDetail})",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.secondary
-                            )
-                        }
-                    }
-                    Column(horizontalAlignment = Alignment.End, modifier = Modifier.weight(1f)) {
-                        Text(text = if (lang == Lang.EN) "Total Bill" else "કુલ બિલ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(text = "₹${customer.totalBillAmount.toInt()}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary))
-                        if (customer.invoiceNumber.isNotEmpty()) {
-                            Text(
-                                text = "Inv: #${customer.invoiceNumber}",
-                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
@@ -2735,6 +2738,14 @@ fun CustomerDetailScreen(viewModel: AppViewModel, customerId: Int, lang: Lang) {
             Button(
                 onClick = {
                     viewModel.logActivity("Call", "Initiated voice call to: ${customer.customerName}")
+                    try {
+                        val intent = android.content.Intent(android.content.Intent.ACTION_DIAL).apply {
+                            data = android.net.Uri.parse("tel:${customer.mobileNumber}")
+                        }
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        android.widget.Toast.makeText(context, "Could not open dialer", android.widget.Toast.LENGTH_SHORT).show()
+                    }
                 },
                 modifier = Modifier
                     .weight(1f)
@@ -5269,8 +5280,7 @@ fun ReferrerReminderDialog(
                 val dueDateVal = earliestDue?.dueDate ?: customer.purchaseDate
                 val invoiceNoVal = customer.invoiceNumber.ifEmpty { "N/A" }
                 
-                sb.append("${index + 1}. ${customer.customerName}\n")
-                sb.append("   • Phone: ${customer.mobileNumber}\n")
+                sb.append("${index + 1}. ${customer.customerName} (${customer.mobileNumber})\n")
                 sb.append("   • Due: ₹${totalPendingCust.toInt()}\n")
                 sb.append("   • Date: $dueDateVal\n")
                 sb.append("   • Inv No: $invoiceNoVal\n")
@@ -5306,8 +5316,7 @@ fun ReferrerReminderDialog(
                     .replace('9', '૯')
                     .replace('0', '૦')
                 
-                sb.append("$indexStr. ${customer.customerName}\n")
-                sb.append("   • ફોન: ${customer.mobileNumber}\n")
+                sb.append("$indexStr. ${customer.customerName} (${customer.mobileNumber})\n")
                 sb.append("   • બાકી હપ્તો: ₹${totalPendingCust.toInt()}\n")
                 sb.append("   • તારીખ: $dueDateVal\n")
                 sb.append("   • ઇન્વોઇસ: $invoiceNoVal\n")
