@@ -54,7 +54,8 @@ data class Due(
     val reminderDate: String = "", // yyyy-MM-dd
     val dueStatus: String, // "Pending", "Partial Paid", "Paid", "Overdue", "Critical"
     val notes: String = "",
-    val invoiceNumber: String = ""
+    val invoiceNumber: String = "",
+    val purchaseDate: String = "" // yyyy-MM-dd
 )
 
 @Entity(
@@ -84,7 +85,8 @@ data class PaymentEntry(
     val paymentDate: String, // yyyy-MM-dd
     val paymentMode: String, // "Cash", "UPI", "Card", "Finance", "Other"
     val notes: String = "",
-    val collectedBy: String // Name or ID of Owner/Staff member
+    val collectedBy: String, // Name or ID of Owner/Staff member
+    val purchaseDate: String = "" // yyyy-MM-dd
 )
 
 @Entity(
@@ -108,7 +110,8 @@ data class PaymentFollowup(
     val nextFollowUpDate: String = "", // yyyy-MM-dd
     val promiseToPayDate: String = "", // yyyy-MM-dd
     val staffName: String,
-    val status: String // "Pending", "Completed", "No Response", "Promised", "Paid"
+    val status: String, // "Pending", "Completed", "No Response", "Promised", "Paid"
+    val purchaseDate: String = "" // yyyy-MM-dd
 )
 
 @Entity(tableName = "referral_persons")

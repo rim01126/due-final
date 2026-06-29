@@ -262,9 +262,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         referrerName: String,
         invoiceNumber: String = "",
         modelDetail: String = "",
-        dueDays: Int = 30
+        dueDays: Int = 30,
+        purchaseDate: String = ""
     ) {
         viewModelScope.launch {
+            val finalPurchaseDate = if (purchaseDate.isNotEmpty()) purchaseDate else repository.getTodayDateString()
             val status = if (pending <= 0.0) "Paid" else "Pending"
             val customer = Customer(
                 customerName = name,
@@ -273,7 +275,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 address = address,
                 cityVillage = city,
                 productPurchased = product,
-                purchaseDate = repository.getTodayDateString(),
+                purchaseDate = finalPurchaseDate,
                 totalBillAmount = price,
                 pendingAmount = pending,
                 notes = notes,
@@ -297,7 +299,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     reminderDate = dateStr,
                     dueStatus = "Pending",
                     notes = if (dueDays != 30) "Pay after $dueDays days promise" else "Direct auto installments",
-                    invoiceNumber = invoiceNumber
+                    invoiceNumber = invoiceNumber,
+                    purchaseDate = finalPurchaseDate
                 )
                 repository.addDue(due, staffNameState.value)
             }
@@ -470,6 +473,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     // Due mutations
     fun addDue(customerId: Int, customerName: String, amount: Double, dueDate: String, notes: String, invoiceNumber: String = "") {
         viewModelScope.launch {
+            val customer = repository.getCustomerById(customerId)
             val due = Due(
                 customerId = customerId,
                 customerName = customerName,
@@ -478,7 +482,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 reminderDate = dueDate,
                 dueStatus = "Pending",
                 notes = notes,
-                invoiceNumber = invoiceNumber
+                invoiceNumber = invoiceNumber,
+                purchaseDate = customer?.purchaseDate ?: ""
             )
             repository.addDue(due, staffNameState.value)
         }
@@ -500,6 +505,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     // Follow-ups
     fun addFollowup(customerId: Int, name: String, notes: String, nextFollow: String, promisePay: String, status: String) {
         viewModelScope.launch {
+            val customer = repository.getCustomerById(customerId)
             val f = PaymentFollowup(
                 customerId = customerId,
                 customerName = name,
@@ -508,7 +514,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 nextFollowUpDate = nextFollow,
                 promiseToPayDate = promisePay,
                 staffName = staffNameState.value,
-                status = status
+                status = status,
+                purchaseDate = customer?.purchaseDate ?: ""
             )
             repository.addFollowup(f, staffNameState.value)
         }

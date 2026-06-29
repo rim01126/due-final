@@ -1540,8 +1540,8 @@ fun DashboardScreen(viewModel: AppViewModel, lang: Lang) {
             viewModel = viewModel,
             lang = lang,
             onDismiss = { showAddCustomerDialogFromDash = false },
-            onSave = { name, mob, altM, addr, city, prod, price, pending, notes, refType, refName, invoiceNo, modelDet, dueDays ->
-                viewModel.addCustomer(name, mob, altM, addr, city, prod, price, pending, notes, refType, refName, invoiceNo, modelDet, dueDays)
+            onSave = { name, mob, altM, addr, city, prod, price, pending, notes, refType, refName, invoiceNo, modelDet, dueDays, purchaseDate ->
+                viewModel.addCustomer(name, mob, altM, addr, city, prod, price, pending, notes, refType, refName, invoiceNo, modelDet, dueDays, purchaseDate)
                 showAddCustomerDialogFromDash = false
                 android.widget.Toast.makeText(context, "Customer created successfully!", android.widget.Toast.LENGTH_SHORT).show()
             }
@@ -1907,8 +1907,8 @@ fun CustomersScreen(viewModel: AppViewModel, lang: Lang) {
             viewModel = viewModel,
             lang = lang,
             onDismiss = { showAddDialog = false },
-            onSave = { name, mob, altM, addr, city, prod, price, pending, notes, refType, refName, invoiceNo, modelDet, dueDays ->
-                viewModel.addCustomer(name, mob, altM, addr, city, prod, price, pending, notes, refType, refName, invoiceNo, modelDet, dueDays)
+            onSave = { name, mob, altM, addr, city, prod, price, pending, notes, refType, refName, invoiceNo, modelDet, dueDays, purchaseDate ->
+                viewModel.addCustomer(name, mob, altM, addr, city, prod, price, pending, notes, refType, refName, invoiceNo, modelDet, dueDays, purchaseDate)
                 showAddDialog = false
             }
         )
@@ -2275,7 +2275,7 @@ fun AddCustomerDialog(
     viewModel: AppViewModel,
     lang: Lang,
     onDismiss: () -> Unit,
-    onSave: (name: String, mob: String, altM: String, addr: String, city: String, prod: String, price: Double, pending: Double, notes: String, refType: String, refName: String, invoiceNo: String, modelDet: String, dueDays: Int) -> Unit
+    onSave: (name: String, mob: String, altM: String, addr: String, city: String, prod: String, price: Double, pending: Double, notes: String, refType: String, refName: String, invoiceNo: String, modelDet: String, dueDays: Int, purchaseDate: String) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var mobile by remember { mutableStateOf("") }
@@ -2289,6 +2289,7 @@ fun AddCustomerDialog(
     var pendingText by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
     var dueDaysInput by remember { mutableStateOf("30") }
+    var purchaseDate by remember { mutableStateOf(viewModel.repository.getTodayDateString()) }
     
     // Referral Selection
     var refType by remember { mutableStateOf("Direct") }
@@ -2354,6 +2355,13 @@ fun AddCustomerDialog(
                     onValueChange = { product = it },
                     label = { Text(AppStrings.productPurchased(lang)) },
                     modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = purchaseDate,
+                    onValueChange = { purchaseDate = it },
+                    label = { Text((if (lang == Lang.EN) "Purchase Date" else "ખરીદી તારીખ") + " (yyyy-MM-dd)") },
+                    modifier = Modifier.fillMaxWidth().testTag("cust_purchase_date_field")
                 )
 
                 OutlinedTextField(
@@ -2544,7 +2552,8 @@ fun AddCustomerDialog(
                                     billText.toDoubleOrNull() ?: 0.0,
                                     pendingText.toDoubleOrNull() ?: 0.0,
                                     notes, refType, refName, invoiceNumber, modelDetail,
-                                    dueDaysInput.toIntOrNull() ?: 30
+                                    dueDaysInput.toIntOrNull() ?: 30,
+                                    purchaseDate
                                 )
                             }
                         },

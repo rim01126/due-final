@@ -54,6 +54,7 @@ create table if not exists public.dues (
     due_status text not null check (due_status in ('Pending', 'Partial Paid', 'Paid', 'Overdue', 'Critical')),
     notes text,
     invoice_number text default '',
+    purchase_date date,
     created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -68,6 +69,7 @@ create table if not exists public.payment_entries (
     payment_mode text not null check (payment_mode in ('Cash', 'UPI', 'Card', 'Finance', 'Other')),
     notes text,
     collected_by text not null, -- Name Reference of Staff/Owner
+    purchase_date date,
     created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -82,6 +84,7 @@ create table if not exists public.payment_followups (
     promise_to_pay_date date,
     staff_name text not null,
     status text not null check (status in ('Pending', 'Completed', 'No Response', 'Promised', 'Paid')),
+    purchase_date date,
     created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 

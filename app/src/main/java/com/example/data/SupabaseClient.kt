@@ -46,7 +46,8 @@ data class DueDto(
     @Json(name = "reminder_date") val reminderDate: String? = null,
     @Json(name = "due_status") val dueStatus: String,
     @Json(name = "notes") val notes: String? = null,
-    @Json(name = "invoice_number") val invoiceNumber: String? = null
+    @Json(name = "invoice_number") val invoiceNumber: String? = null,
+    @Json(name = "purchase_date") val purchaseDate: String? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -59,7 +60,8 @@ data class PaymentEntryDto(
     @Json(name = "payment_date") val paymentDate: String,
     @Json(name = "payment_mode") val paymentMode: String,
     @Json(name = "notes") val notes: String? = null,
-    @Json(name = "collected_by") val collectedBy: String
+    @Json(name = "collected_by") val collectedBy: String,
+    @Json(name = "purchase_date") val purchaseDate: String? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -72,7 +74,8 @@ data class PaymentFollowupDto(
     @Json(name = "next_follow_up_date") val nextFollowUpDate: String? = null,
     @Json(name = "promise_to_pay_date") val promiseToPayDate: String? = null,
     @Json(name = "staff_name") val staffName: String,
-    @Json(name = "status") val status: String
+    @Json(name = "status") val status: String,
+    @Json(name = "purchase_date") val purchaseDate: String? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -437,7 +440,8 @@ fun Due.toDto() = DueDto(
     reminderDate = reminderDate.takeIf { it.isNotEmpty() },
     dueStatus = dueStatus,
     notes = notes.takeIf { it.isNotEmpty() },
-    invoiceNumber = invoiceNumber.takeIf { it.isNotEmpty() }
+    invoiceNumber = invoiceNumber.takeIf { it.isNotEmpty() },
+    purchaseDate = purchaseDate.takeIf { it.isNotEmpty() }
 )
 
 fun DueDto.toEntity() = Due(
@@ -449,7 +453,8 @@ fun DueDto.toEntity() = Due(
     reminderDate = reminderDate ?: "",
     dueStatus = dueStatus,
     notes = notes ?: "",
-    invoiceNumber = invoiceNumber ?: ""
+    invoiceNumber = invoiceNumber ?: "",
+    purchaseDate = purchaseDate ?: ""
 )
 
 fun PaymentEntry.toDto() = PaymentEntryDto(
@@ -461,19 +466,21 @@ fun PaymentEntry.toDto() = PaymentEntryDto(
     paymentDate = paymentDate,
     paymentMode = paymentMode,
     notes = notes.takeIf { it.isNotEmpty() },
-    collectedBy = collectedBy
+    collectedBy = collectedBy,
+    purchaseDate = purchaseDate.takeIf { it.isNotEmpty() }
 )
 
 fun PaymentEntryDto.toEntity() = PaymentEntry(
     id = id ?: 0,
     customerId = customerId,
     customerName = customerName,
-    dueId = dueId ?: 0,
+    dueId = dueId,
     amountPaid = amountPaid,
     paymentDate = paymentDate,
     paymentMode = paymentMode,
     notes = notes ?: "",
-    collectedBy = collectedBy
+    collectedBy = collectedBy,
+    purchaseDate = purchaseDate ?: ""
 )
 
 fun PaymentFollowup.toDto() = PaymentFollowupDto(
@@ -485,7 +492,8 @@ fun PaymentFollowup.toDto() = PaymentFollowupDto(
     nextFollowUpDate = nextFollowUpDate.takeIf { it.isNotEmpty() },
     promiseToPayDate = promiseToPayDate.takeIf { it.isNotEmpty() },
     staffName = staffName,
-    status = status
+    status = status,
+    purchaseDate = purchaseDate.takeIf { it.isNotEmpty() }
 )
 
 fun PaymentFollowupDto.toEntity() = PaymentFollowup(
@@ -497,7 +505,8 @@ fun PaymentFollowupDto.toEntity() = PaymentFollowup(
     nextFollowUpDate = nextFollowUpDate ?: "",
     promiseToPayDate = promiseToPayDate ?: "",
     staffName = staffName,
-    status = status
+    status = status,
+    purchaseDate = purchaseDate ?: ""
 )
 
 fun ReferralPerson.toDto() = ReferralPersonDto(
@@ -565,7 +574,7 @@ fun WhatsAppReminderLogDto.toEntity() = WhatsAppReminderLog(
     id = id ?: 0,
     sentDate = sentDate,
     sentBy = sentBy,
-    customerId = customerId ?: 0,
+    customerId = customerId,
     customerName = customerName,
     message = message
 )

@@ -134,7 +134,8 @@ class AppRepository(private val appDao: AppDao) {
             paymentDate = getTodayDateString(),
             paymentMode = paymentMode,
             notes = notes,
-            collectedBy = collectedBy
+            collectedBy = collectedBy,
+            purchaseDate = customer.purchaseDate
         )
         val generatedPaymentId = appDao.insertPaymentEntry(entry).toInt()
         val savedEntry = entry.copy(id = generatedPaymentId)
@@ -241,7 +242,7 @@ class AppRepository(private val appDao: AppDao) {
         val log = WhatsAppReminderLog(
             sentDate = getDateTimeString(),
             sentBy = sentBy,
-            customerId = customerId,
+            customerId = if (customerId == 0) null else customerId,
             customerName = customerName,
             message = messageText
         )
@@ -380,15 +381,76 @@ class AppRepository(private val appDao: AppDao) {
             val templates = service.getMessageTemplates().map { it.toEntity() }
             val activityLogs = service.getActivityLogs().map { it.toEntity() }
 
-            // 2. Insert into Room locally
+            // 2. Data Integrity: Filter and Order Insertions to respect Foreign Key Constraints
+            // Parent: Customers, Staff, ReferralPersons, Dues (for Payments)
+            
+            // Insert Customers first (they are parents for many tables)
+            android.util.Log.d("SupabaseSync", "Inserting ${customers.size} customers...")
             customers.forEach { appDao.insertCustomer(it) }
-            dues.forEach { appDao.insertDue(it) }
-            payments.forEach { appDao.insertPaymentEntry(it) }
-            followups.forEach { appDao.insertFollowup(it) }
-            referrals.forEach { appDao.insertCustomerReferral(it) }
+            
+            // Collect valid IDs to ensure child insertions succeed
+            val insertedCustomerIds = customers.map { it.id }.toSet()
+            
+            // Insert Dues (Child of Customers)
+            val validDues = dues.filter { insertedCustomerIds.contains(it.customerId) }
+            android.util.Log.d("SupabaseSync", "Inserting ${validDues.size} valid dues (out of ${dues.size})...")
+            validDues.forEach { appDao.insertDue(it) }
+            val insertedDueIds = validDues.map { it.id }.toSet()
+            
+            // Insert Payments (Child of Customers AND Dues)
+            val validPayments = payments.filter { 
+                insertedCustomerIds.contains(it.customerId) && (it.dueId == null || it.dueId == 0 || insertedDueIds.contains(it.dueId))
+            }
+            android.util.Log.d("SupabaseSync", "Inserting ${validPayments.size} valid payments (out of ${payments.size})...")
+            validPayments.forEach { 
+                try {
+                    // Normalize dueId: If it's 0, it should be null to avoid FK violation in Room
+                    val entryToInsert = if (it.dueId == 0) it.copy(dueId = null) else it
+                    appDao.insertPaymentEntry(entryToInsert)
+                } catch (e: Exception) {
+                    android.util.Log.e("SupabaseSync", "Failed to insert payment entry: $it", e)
+                }
+            }
+            
+            // Insert Followups (Child of Customers)
+            val validFollowups = followups.filter { insertedCustomerIds.contains(it.customerId) }
+            android.util.Log.d("SupabaseSync", "Inserting ${validFollowups.size} valid followups (out of ${followups.size})...")
+            validFollowups.forEach { 
+                try {
+                    appDao.insertFollowup(it) 
+                } catch (e: Exception) {
+                    android.util.Log.e("SupabaseSync", "Failed to insert followup: $it", e)
+                }
+            }
+            
+            // Insert Referrals (Child of Customers)
+            val validReferrals = referrals.filter { insertedCustomerIds.contains(it.customerId) }
+            android.util.Log.d("SupabaseSync", "Inserting ${validReferrals.size} valid referrals (out of ${referrals.size})...")
+            validReferrals.forEach { 
+                try {
+                    appDao.insertCustomerReferral(it)
+                } catch (e: Exception) {
+                    android.util.Log.e("SupabaseSync", "Failed to insert referral: $it", e)
+                }
+            }
+            
+            // Insert Reminder Logs (Child of Customers - optional)
+            val validReminderLogs = reminderLogs.filter { it.customerId == null || it.customerId == 0 || insertedCustomerIds.contains(it.customerId) }
+            android.util.Log.d("SupabaseSync", "Inserting ${validReminderLogs.size} valid reminder logs (out of ${reminderLogs.size})...")
+            validReminderLogs.forEach { 
+                try {
+                    // Normalize customerId: If it's 0, it should be null to avoid FK violation in Room
+                    val logToInsert = if (it.customerId == 0) it.copy(customerId = null) else it
+                    appDao.insertReminderLog(logToInsert)
+                } catch (e: Exception) {
+                    android.util.Log.e("SupabaseSync", "Failed to insert reminder log: $it", e)
+                }
+            }
+
+            // Independent or Parent-only tables
+            android.util.Log.d("SupabaseSync", "Inserting independent tables...")
             referralPersons.forEach { appDao.insertReferralPerson(it) }
             staff.forEach { appDao.insertStaff(it) }
-            reminderLogs.forEach { appDao.insertReminderLog(it) }
             templates.forEach { appDao.insertTemplate(it) }
             activityLogs.forEach { appDao.insertActivityLog(it) }
 
